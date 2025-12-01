@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Client, PatientData, ChatMessage, ExperienceEntry } from '../types';
 import { translateText } from '../services/geminiService';
-import { X, BookUser, MessageSquare, Languages, Inbox, Paperclip } from 'lucide-react';
+import { X, BookUser, MessageSquare, Languages, Inbox, Paperclip, Globe, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface PatientSubmissionsViewerProps {
     isOpen: boolean;
@@ -120,7 +120,7 @@ const SubmissionsContent = ({ client, data }: { client: Client, data: PatientDat
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'experience': return <ExperienceView entries={data.experiences} />;
+            case 'experience': return <ExperienceView entries={data.experiences} clientLanguage={client.languages[0]} />;
             case 'messages': return <MessagesView messages={data.messages} client={client}/>;
             default: return null;
         }
@@ -143,66 +143,316 @@ const SubmissionsContent = ({ client, data }: { client: Client, data: PatientDat
     );
 };
 
-const ExperienceView: React.FC<{ entries: ExperienceEntry[] }> = ({ entries }) => (
-    <div className="space-y-4">
-        {entries.length > 0 ? [...entries].reverse().map(entry => (
-             <div key={entry.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-md border-l-4 border-baby-blue-300 dark:border-baby-blue-600">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleString()}</p>
-                <p className="text-gray-800 dark:text-gray-200 mt-1 whitespace-pre-wrap">{entry.content}</p>
-                {entry.attachments && entry.attachments.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Attachments:</h4>
-                        <ul className="space-y-1">
-                            {entry.attachments.map((file, index) => (
-                                <li key={index}>
-                                    <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
-                                        <Paperclip size={14} className="mr-1" /> {file.name}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </div>
-        )) : <p className="text-gray-500 dark:text-gray-400">No journal entries from this client.</p>}
-    </div>
-);
+const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: string }> = ({ entries, clientLanguage }) => {
+    const [translations, setTranslations] = useState<Record<string, { text: string; status: 'loading' | 'success' | 'error' }>>({});
 
-const MessagesView: React.FC<{ messages: ChatMessage[], client: Client }> = ({ messages, client }) => {
-    const [isTranslating, setIsTranslating] = useState(false);
-    
-    const handleTranslate = async (text: string) => {
-        setIsTranslating(true);
+    const translateEntry = useCallback(async (entryId: string, text: string) => {
+        // Check cache first
+        const cacheKey = `${text}_English`;
+        if (translationCache.has(cacheKey)) {
+            setTranslations(prev => ({
+                ...prev,
+                [entryId]: { text: translationCache.get(cacheKey)!, status: 'success' }
+            }));
+            return;
+        }
+
+        setTranslations(prev => ({
+            ...prev,
+            [entryId]: { text: '', status: 'loading' }
+        }));
+
         try {
             const translatedText = await translateText(text, "English");
-            alert(`Translation to English:\n\n${translatedText}`);
+            translationCache.set(cacheKey, translatedText);
+            setTranslations(prev => ({
+                ...prev,
+                [entryId]: { text: translatedText, status: 'success' }
+            }));
         } catch (error) {
-             alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        } finally {
-            setIsTranslating(false);
+            setTranslations(prev => ({
+                ...prev,
+                [entryId]: { text: error instanceof Error ? error.message : 'Translation failed', status: 'error' }
+            }));
         }
+    }, []);
+
+    // Detect if text contains non-ASCII characters (likely non-English)
+    const isLikelyNonEnglish = (text: string): boolean => {
+        // Check for Chinese, Arabic, Vietnamese, etc. characters
+        const nonLatinPattern = /[\u4e00-\u9fff\u0600-\u06ff\u0400-\u04ff\u3040-\u309f\u30a0-\u30ff\u1100-\u11ff\uac00-\ud7af\u0e00-\u0e7f]/;
+        return nonLatinPattern.test(text) || (clientLanguage && clientLanguage !== 'English');
     };
 
     return (
         <div className="space-y-4">
-             {messages.map(msg => (
-                <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === 'patient' ? '' : 'flex-row-reverse'}`}>
-                    <div className={`p-3 rounded-lg max-w-lg ${msg.sender === 'patient' ? 'bg-baby-blue-100 dark:bg-baby-blue-900/50' : 'bg-lime-green-100 dark:bg-lime-green-900/50'}`}>
-                        <p className="text-gray-800 dark:text-gray-100">{msg.text}</p>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex justify-between items-center">
-                            <span>{new Date(msg.timestamp).toLocaleString()}</span>
-                            {msg.sender === 'patient' && msg.language !== 'English' && (
-                                <button onClick={() => handleTranslate(msg.text)} disabled={isTranslating} className="ml-3 inline-flex items-center text-baby-blue-600 dark:text-baby-blue-400 hover:underline disabled:opacity-50">
-                                    <Languages size={14} className="mr-1"/> Translate
-                                </button>
+            {/* Info banner about translation */}
+            {clientLanguage && clientLanguage !== 'English' && (
+                <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-baby-blue-50 to-lime-green-50 dark:from-baby-blue-900/30 dark:to-lime-green-900/30 rounded-lg border border-baby-blue-200 dark:border-baby-blue-800">
+                    <Globe className="h-5 w-5 text-baby-blue-600 dark:text-baby-blue-400" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Client's primary language: <strong>{clientLanguage}</strong> — Click "Translate" on entries to view English translation
+                    </span>
+                </div>
+            )}
+            
+            {entries.length > 0 ? [...entries].reverse().map(entry => {
+                const needsTranslation = isLikelyNonEnglish(entry.content);
+                const translation = translations[entry.id];
+                
+                return (
+                    <div key={entry.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-md border-l-4 border-baby-blue-300 dark:border-baby-blue-600">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleString()}</p>
+                            {needsTranslation && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
+                                    <Languages size={12} />
+                                    {clientLanguage || 'Non-English'}
+                                </span>
                             )}
                         </div>
+                        
+                        {/* Original content */}
+                        <p className={`text-gray-800 dark:text-gray-200 whitespace-pre-wrap ${needsTranslation && translation?.status === 'success' ? 'text-sm italic opacity-75' : ''}`}>
+                            {entry.content}
+                        </p>
+                        
+                        {/* Translation section */}
+                        {needsTranslation && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                {!translation && (
+                                    <button 
+                                        onClick={() => translateEntry(entry.id, entry.content)}
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-baby-blue-500 hover:bg-baby-blue-600 rounded-md transition-colors"
+                                    >
+                                        <Languages size={14} /> Translate to English
+                                    </button>
+                                )}
+                                
+                                {translation?.status === 'loading' && (
+                                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                                        <Loader2 size={14} className="animate-spin" />
+                                        <span className="text-sm">Translating with AI...</span>
+                                    </div>
+                                )}
+                                
+                                {translation?.status === 'success' && (
+                                    <div>
+                                        <div className="flex items-center gap-1 mb-2">
+                                            <Globe size={14} className="text-lime-green-600 dark:text-lime-green-400" />
+                                            <span className="text-xs font-semibold text-lime-green-700 dark:text-lime-green-400">
+                                                English Translation:
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-800 dark:text-gray-100 font-medium whitespace-pre-wrap bg-lime-green-50 dark:bg-lime-green-900/30 p-3 rounded-md">
+                                            {translation.text}
+                                        </p>
+                                    </div>
+                                )}
+                                
+                                {translation?.status === 'error' && (
+                                    <div className="flex items-center gap-2">
+                                        <AlertCircle size={14} className="text-red-500" />
+                                        <span className="text-sm text-red-600 dark:text-red-400">{translation.text}</span>
+                                        <button 
+                                            onClick={() => translateEntry(entry.id, entry.content)}
+                                            className="inline-flex items-center gap-1 text-xs text-baby-blue-600 dark:text-baby-blue-400 hover:underline"
+                                        >
+                                            <RefreshCw size={12} /> Retry
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* Attachments */}
+                        {entry.attachments && entry.attachments.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Attachments:</h4>
+                                <ul className="space-y-1">
+                                    {entry.attachments.map((file, index) => (
+                                        <li key={index}>
+                                            <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
+                                                <Paperclip size={14} className="mr-1" /> {file.name}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
-                     <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center font-bold text-gray-600 dark:text-gray-200 text-sm flex-shrink-0" title={msg.sender === 'patient' ? client.fullName : 'Navigator'}>
-                        {msg.sender === 'patient' ? client.fullName.charAt(0) : 'N'}
-                    </div>
+                );
+            }) : <p className="text-gray-500 dark:text-gray-400">No journal entries from this client.</p>}
+        </div>
+    );
+};
+
+// Cache for translations to avoid re-translating the same message
+const translationCache = new Map<string, string>();
+
+const MessagesView: React.FC<{ messages: ChatMessage[], client: Client }> = ({ messages, client }) => {
+    const [translations, setTranslations] = useState<Record<string, { text: string; status: 'loading' | 'success' | 'error' }>>({});
+    const [autoTranslate, setAutoTranslate] = useState(true);
+
+    // Auto-translate non-English patient messages
+    const translateMessage = useCallback(async (msgId: string, text: string) => {
+        // Check cache first
+        const cacheKey = `${text}_English`;
+        if (translationCache.has(cacheKey)) {
+            setTranslations(prev => ({
+                ...prev,
+                [msgId]: { text: translationCache.get(cacheKey)!, status: 'success' }
+            }));
+            return;
+        }
+
+        setTranslations(prev => ({
+            ...prev,
+            [msgId]: { text: '', status: 'loading' }
+        }));
+
+        try {
+            const translatedText = await translateText(text, "English");
+            translationCache.set(cacheKey, translatedText);
+            setTranslations(prev => ({
+                ...prev,
+                [msgId]: { text: translatedText, status: 'success' }
+            }));
+        } catch (error) {
+            setTranslations(prev => ({
+                ...prev,
+                [msgId]: { text: error instanceof Error ? error.message : 'Translation failed', status: 'error' }
+            }));
+        }
+    }, []);
+
+    // Auto-translate on mount and when messages change
+    useEffect(() => {
+        if (!autoTranslate) return;
+        
+        messages.forEach(msg => {
+            if (msg.sender === 'patient' && msg.language !== 'English' && !translations[msg.id]) {
+                translateMessage(msg.id, msg.text);
+            }
+        });
+    }, [messages, autoTranslate, translateMessage, translations]);
+
+    const retryTranslation = (msgId: string, text: string) => {
+        translateMessage(msgId, text);
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* Auto-translate toggle and info banner */}
+            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-baby-blue-50 to-lime-green-50 dark:from-baby-blue-900/30 dark:to-lime-green-900/30 rounded-lg border border-baby-blue-200 dark:border-baby-blue-800">
+                <div className="flex items-center gap-2">
+                    <Globe className="h-5 w-5 text-baby-blue-600 dark:text-baby-blue-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        AI-Powered Translation
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                        (Messages in other languages are automatically translated to English)
+                    </span>
                 </div>
-            ))}
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Auto-translate</span>
+                    <div className="relative">
+                        <input
+                            type="checkbox"
+                            checked={autoTranslate}
+                            onChange={(e) => setAutoTranslate(e.target.checked)}
+                            className="sr-only peer"
+                        />
+                        <div className="w-10 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-baby-blue-300 dark:peer-focus:ring-baby-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-500 peer-checked:bg-baby-blue-500"></div>
+                    </div>
+                </label>
+            </div>
+
+            {/* Messages list */}
+            {messages.map(msg => {
+                const isNonEnglishPatientMessage = msg.sender === 'patient' && msg.language !== 'English';
+                const translation = translations[msg.id];
+                
+                return (
+                    <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === 'patient' ? '' : 'flex-row-reverse'}`}>
+                        <div className={`rounded-lg max-w-lg ${msg.sender === 'patient' ? 'bg-baby-blue-100 dark:bg-baby-blue-900/50' : 'bg-lime-green-100 dark:bg-lime-green-900/50'}`}>
+                            {/* Language badge for non-English messages */}
+                            {isNonEnglishPatientMessage && (
+                                <div className="px-3 pt-2">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
+                                        <Languages size={12} />
+                                        Original: {msg.language}
+                                    </span>
+                                </div>
+                            )}
+                            
+                            <div className="p-3">
+                                {/* Original message */}
+                                <p className={`text-gray-800 dark:text-gray-100 ${isNonEnglishPatientMessage ? 'text-sm italic opacity-75' : ''}`}>
+                                    {msg.text}
+                                </p>
+                                
+                                {/* Translation section for non-English patient messages */}
+                                {isNonEnglishPatientMessage && (
+                                    <div className="mt-3 pt-3 border-t border-baby-blue-200 dark:border-baby-blue-700">
+                                        <div className="flex items-center gap-1 mb-1">
+                                            <Globe size={12} className="text-lime-green-600 dark:text-lime-green-400" />
+                                            <span className="text-xs font-semibold text-lime-green-700 dark:text-lime-green-400">
+                                                English Translation:
+                                            </span>
+                                        </div>
+                                        
+                                        {translation?.status === 'loading' && (
+                                            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                                                <Loader2 size={14} className="animate-spin" />
+                                                <span className="text-sm">Translating...</span>
+                                            </div>
+                                        )}
+                                        
+                                        {translation?.status === 'success' && (
+                                            <p className="text-gray-800 dark:text-gray-100 font-medium">
+                                                {translation.text}
+                                            </p>
+                                        )}
+                                        
+                                        {translation?.status === 'error' && (
+                                            <div className="flex items-center gap-2">
+                                                <AlertCircle size={14} className="text-red-500" />
+                                                <span className="text-sm text-red-600 dark:text-red-400">{translation.text}</span>
+                                                <button 
+                                                    onClick={() => retryTranslation(msg.id, msg.text)}
+                                                    className="inline-flex items-center gap-1 text-xs text-baby-blue-600 dark:text-baby-blue-400 hover:underline"
+                                                >
+                                                    <RefreshCw size={12} /> Retry
+                                                </button>
+                                            </div>
+                                        )}
+                                        
+                                        {!translation && !autoTranslate && (
+                                            <button 
+                                                onClick={() => translateMessage(msg.id, msg.text)}
+                                                className="inline-flex items-center gap-1 text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline"
+                                            >
+                                                <Languages size={14} /> Click to translate
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                                
+                                {/* Timestamp */}
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                    {new Date(msg.timestamp).toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Avatar */}
+                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center font-bold text-gray-600 dark:text-gray-200 text-sm flex-shrink-0" title={msg.sender === 'patient' ? client.fullName : 'Navigator'}>
+                            {msg.sender === 'patient' ? client.fullName.charAt(0) : 'N'}
+                        </div>
+                    </div>
+                );
+            })}
             {messages.length === 0 && <p className="text-gray-500 dark:text-gray-400">No messages exchanged with this client.</p>}
         </div>
     );
