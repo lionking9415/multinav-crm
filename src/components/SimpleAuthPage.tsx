@@ -2,11 +2,22 @@ import React, { useState } from 'react';
 import { Leaf, Mail, KeyRound, User, Loader2 } from 'lucide-react';
 import type { Client } from '../types';
 import { userService, clientService } from '../services/supabaseService';
+import { isDeviceTrusted, initiate2FA, generateDeviceFingerprint } from '../services/twoFactorService';
+import OTPVerification from './OTPVerification';
 
 interface SimpleAuthPageProps {
   onStaffLogin: (userRole?: 'admin' | 'coordinator' | 'navigator', userEmail?: string) => void;
   onPatientLogin: (client: Client) => void;
   clients: Client[];
+}
+
+// Pending user info for 2FA
+interface PendingUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'coordinator' | 'navigator';
+  twoFactorEnabled: boolean;
 }
 
 const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatientLogin, clients }) => {
@@ -16,23 +27,37 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
   const [clientId, setClientId] = useState('');
   const [clientPassword, setClientPassword] = useState('');
   const [error, setError] = useState('');
+  const [isStaffLoading, setIsStaffLoading] = useState(false);
+  
+  // 2FA state
+  const [show2FA, setShow2FA] = useState(false);
+  const [pendingUser, setPendingUser] = useState<PendingUser | null>(null);
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsStaffLoading(true);
     
     try {
       // First try to authenticate against the database
       const result = await userService.authenticate(staffEmail, staffPassword);
       
+      let authenticatedUser: PendingUser | null = null;
+      
       if (result.success && result.user) {
-        onStaffLogin(result.user.role, result.user.email);
+        authenticatedUser = {
+          id: result.user.id || staffEmail,
+          email: result.user.email,
+          name: result.user.fullName || staffEmail.split('@')[0],
+          role: result.user.role,
+          twoFactorEnabled: result.user.twoFactorEnabled || false
+        };
       } else {
         // Fallback to demo accounts for backward compatibility
         const validAccounts = [
-          { email: 'admin@multinav.com', password: 'password123', role: 'admin' as const },
-          { email: 'coordinator@multinav.com', password: 'password123', role: 'coordinator' as const },
-          { email: 'navigator@multinav.com', password: 'password123', role: 'navigator' as const }
+          { email: 'admin@multinav.com', password: 'password123', role: 'admin' as const, name: 'Admin User', twoFactorEnabled: false },
+          { email: 'coordinator@multinav.com', password: 'password123', role: 'coordinator' as const, name: 'Coordinator User', twoFactorEnabled: false },
+          { email: 'navigator@multinav.com', password: 'password123', role: 'navigator' as const, name: 'Navigator User', twoFactorEnabled: false }
         ];
         
         const account = validAccounts.find(
@@ -40,15 +65,75 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
         );
         
         if (account) {
-          onStaffLogin(account.role, account.email);
+          authenticatedUser = {
+            id: account.email,
+            email: account.email,
+            name: account.name,
+            role: account.role,
+            twoFactorEnabled: account.twoFactorEnabled
+          };
         } else {
           setError(result.message || 'Invalid email or password');
+          setIsStaffLoading(false);
+          return;
+        }
+      }
+      
+      // User authenticated - check if 2FA is enabled for this user
+      if (authenticatedUser) {
+        // If 2FA is NOT enabled for this user, proceed directly to login
+        if (!authenticatedUser.twoFactorEnabled) {
+          console.log('[2FA] 2FA not enabled for user, proceeding to login');
+          onStaffLogin(authenticatedUser.role, authenticatedUser.email);
+          return;
+        }
+        
+        // 2FA is enabled - check if device is trusted
+        const deviceHash = generateDeviceFingerprint();
+        console.log('[2FA] 2FA enabled, checking if device is trusted:', deviceHash);
+        
+        const trusted = await isDeviceTrusted(authenticatedUser.id, deviceHash);
+        
+        if (trusted) {
+          // Device is trusted - proceed to login
+          console.log('[2FA] Device is trusted, proceeding to login');
+          onStaffLogin(authenticatedUser.role, authenticatedUser.email);
+        } else {
+          // Device not trusted - initiate 2FA
+          console.log('[2FA] Device not trusted, initiating 2FA');
+          const otpResult = await initiate2FA(
+            authenticatedUser.id,
+            authenticatedUser.email,
+            authenticatedUser.name
+          );
+          
+          if (otpResult.success) {
+            setPendingUser(authenticatedUser);
+            setShow2FA(true);
+          } else {
+            setError(otpResult.message);
+          }
         }
       }
     } catch (error) {
       console.error('Login error:', error);
       setError('Login failed. Please try again.');
+    } finally {
+      setIsStaffLoading(false);
     }
+  };
+  
+  // Handle successful 2FA verification
+  const handle2FAVerified = () => {
+    if (pendingUser) {
+      onStaffLogin(pendingUser.role, pendingUser.email);
+    }
+  };
+  
+  // Handle 2FA cancellation
+  const handle2FACancel = () => {
+    setShow2FA(false);
+    setPendingUser(null);
   };
 
   const [isLoading, setIsLoading] = useState(false);
@@ -105,6 +190,19 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
       setIsLoading(false);
     }
   };
+
+  // Show 2FA verification screen if needed
+  if (show2FA && pendingUser) {
+    return (
+      <OTPVerification
+        userId={pendingUser.id}
+        userEmail={pendingUser.email}
+        userName={pendingUser.name}
+        onVerified={handle2FAVerified}
+        onCancel={handle2FACancel}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-baby-blue-100 to-lime-green-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
@@ -194,9 +292,17 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
 
             <button
               type="submit"
-              className="w-full py-3 px-4 bg-lime-green-500 hover:bg-lime-green-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all"
+              disabled={isStaffLoading}
+              className="w-full py-3 px-4 bg-lime-green-500 hover:bg-lime-green-600 disabled:bg-lime-green-300 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
-              Sign In as Staff
+              {isStaffLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Sign In as Staff'
+              )}
             </button>
             
             <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
