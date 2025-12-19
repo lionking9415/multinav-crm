@@ -1,7 +1,7 @@
 import { supabase } from './supabaseService';
 
-// Resend API key - in production, this should be in environment variables
-const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY || 're_54bziP1L_E77d27UxosxUVUrJgwsd4AAT';
+// Resend API key - must be set in environment variables
+const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY || '';
 
 // Supabase Edge Function URL for sending OTP emails
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hmruaeewpurjmjgqlojk.supabase.co';

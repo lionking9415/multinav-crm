@@ -3,7 +3,11 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_54bziP1L_E77d27UxosxUVUrJgwsd4AAT";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+
+if (!RESEND_API_KEY) {
+  console.error("[Edge Function] RESEND_API_KEY environment variable is not set");
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
