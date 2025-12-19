@@ -131,35 +131,72 @@ export const clientService = {
   },
 
   async authenticate(clientId: string, password: string): Promise<Client | null> {
-    const { data, error } = await supabase
+    // Normalize client ID - trim whitespace and convert to uppercase for consistent matching
+    const normalizedClientId = clientId.trim().toUpperCase();
+    
+    console.log('[Auth] Attempting authentication for client ID:', normalizedClientId);
+    
+    // Try exact match first
+    let { data, error } = await supabase
       .from('clients')
       .select('*')
-      .eq('id', clientId)
+      .eq('id', normalizedClientId)
       .single();
     
-    if (error || !data) return null;
-    
-    // In production, verify password hash properly
-    // For now, we'll do a simple check
-    if (data.password_hash === password || data.password_hash === await hashPassword(password)) {
-      return {
-        id: data.id,
-        fullName: data.full_name,
-        sex: data.sex,
-        dob: data.date_of_birth,
-        age: data.age,
-        ethnicity: data.ethnicity,
-        countryOfBirth: data.country_of_birth,
-        languages: data.languages || [],
-        referralSource: data.referral_source,
-        referralDate: data.referral_date,
-        address: data.address,
-        postcode: data.postcode,
-        region: data.region
-      };
+    // If not found, try case-insensitive search using ilike
+    if (error || !data) {
+      console.log('[Auth] Exact match failed, trying case-insensitive search...');
+      const { data: iData, error: iError } = await supabase
+        .from('clients')
+        .select('*')
+        .ilike('id', normalizedClientId)
+        .single();
+      
+      data = iData;
+      error = iError;
     }
     
-    return null;
+    if (error) {
+      console.log('[Auth] Client lookup error:', error.message);
+      return null;
+    }
+    
+    if (!data) {
+      console.log('[Auth] No client found with ID:', normalizedClientId);
+      return null;
+    }
+    
+    console.log('[Auth] Client found:', data.id, '- checking password...');
+    
+    // Check password - compare directly and also with hash
+    const passwordMatch = 
+      data.password_hash === password || 
+      data.password_hash === await hashPassword(password);
+    
+    if (!passwordMatch) {
+      console.log('[Auth] Password mismatch for client:', data.id);
+      console.log('[Auth] Stored hash length:', data.password_hash?.length || 0);
+      console.log('[Auth] Provided password length:', password.length);
+      return null;
+    }
+    
+    console.log('[Auth] Authentication successful for client:', data.id);
+    
+    return {
+      id: data.id,
+      fullName: data.full_name,
+      sex: data.sex,
+      dob: data.date_of_birth,
+      age: data.age,
+      ethnicity: data.ethnicity,
+      countryOfBirth: data.country_of_birth,
+      languages: data.languages || [],
+      referralSource: data.referral_source,
+      referralDate: data.referral_date,
+      address: data.address,
+      postcode: data.postcode,
+      region: data.region
+    };
   }
 };
 

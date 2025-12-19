@@ -58,30 +58,42 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
     setError('');
     setIsLoading(true);
     
+    // Normalize client ID - trim whitespace
+    const normalizedClientId = clientId.trim();
+    
+      console.log('[PatientLogin] Attempting login with client ID:', normalizedClientId);
+      console.log('[PatientLogin] Password length:', clientPassword.length);
+    
     try {
       // First try to authenticate against the database
-      const authenticatedClient = await clientService.authenticate(clientId, clientPassword);
+      const authenticatedClient = await clientService.authenticate(normalizedClientId, clientPassword);
       
       if (authenticatedClient) {
+        console.log('[PatientLogin] Database authentication successful');
         onPatientLogin(authenticatedClient);
         return;
       }
       
+      console.log('[PatientLogin] Database authentication failed, trying mock clients...');
+      
       // Fallback: Check mock clients (for demo purposes when database is empty)
+      // Use case-insensitive comparison for client ID
       const mockClient = clients.find(c => 
-        c.id === clientId && c.password === clientPassword
+        c.id.toUpperCase() === normalizedClientId.toUpperCase() && c.password === clientPassword
       );
       
       if (mockClient) {
+        console.log('[PatientLogin] Mock client authentication successful');
         onPatientLogin(mockClient);
       } else {
+        console.log('[PatientLogin] All authentication methods failed');
         setError('Invalid Client ID or password. Please check your credentials and try again.');
       }
     } catch (error) {
-      console.error('Patient login error:', error);
+      console.error('[PatientLogin] Error during authentication:', error);
       // If database authentication fails, try mock clients
       const mockClient = clients.find(c => 
-        c.id === clientId && c.password === clientPassword
+        c.id.toUpperCase() === normalizedClientId.toUpperCase() && c.password === clientPassword
       );
       
       if (mockClient) {
