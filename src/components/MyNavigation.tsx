@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Client, PatientData, ChatMessage, ExperienceEntry, Attachment } from '../types';
 import { translateText } from '../services/geminiService';
+import { patientDataService } from '../services/supabaseService';
 import Card from './Card';
-import { BookUser, MessageSquare, ListChecks, Send, Languages, LogOut, Sun, Moon, Leaf, Paperclip, X, UploadCloud } from 'lucide-react';
+import { BookUser, MessageSquare, ListChecks, Send, Languages, LogOut, Sun, Moon, Leaf, Paperclip, X, UploadCloud, Loader2 } from 'lucide-react';
 
 interface MyNavigationProps {
     client: Client;
@@ -19,7 +20,7 @@ const MyNavigation: React.FC<MyNavigationProps> = ({ client, data, setData, onLo
     const renderContent = () => {
         switch (activeTab) {
             case 'experience':
-                return <ExperienceJournal experiences={data.experiences} setExperiences={(newExperiences) => setData({ ...data, experiences: newExperiences })} />;
+                return <ExperienceJournal experiences={data.experiences} setExperiences={(newExperiences) => setData({ ...data, experiences: newExperiences })} clientId={client.id} />;
             case 'messages':
                 return <CommunicationHub messages={data.messages} setMessages={(newMessages) => setData({ ...data, messages: newMessages })} client={client} />;
             default:
@@ -78,9 +79,10 @@ const MyNavigation: React.FC<MyNavigationProps> = ({ client, data, setData, onLo
 
 // Sub-components for MyNavigation
 
-const ExperienceJournal = ({ experiences, setExperiences }: { experiences: ExperienceEntry[], setExperiences: (e: ExperienceEntry[]) => void }) => {
+const ExperienceJournal = ({ experiences, setExperiences, clientId }: { experiences: ExperienceEntry[], setExperiences: (e: ExperienceEntry[]) => void, clientId: string }) => {
     const [newEntry, setNewEntry] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const readFileAsDataURL = (file: File): Promise<Attachment> => {
@@ -98,20 +100,37 @@ const ExperienceJournal = ({ experiences, setExperiences }: { experiences: Exper
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newEntry.trim()) return;
+        if (!newEntry.trim() || isSaving) return;
 
+        setIsSaving(true);
         const fileAttachments = await Promise.all(attachments.map(readFileAsDataURL));
 
         const entry: ExperienceEntry = {
-            id: new Date().toISOString(),
+            id: `exp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             date: new Date().toISOString().split('T')[0],
             content: newEntry,
             isRead: false,
             attachments: fileAttachments,
         };
-        setExperiences([entry, ...experiences]);
-        setNewEntry('');
-        setAttachments([]);
+        
+        try {
+            // Save to database
+            await patientDataService.createExperience(clientId, entry);
+            console.log('[MyNavigation] Experience saved to database:', entry.id);
+            
+            setExperiences([entry, ...experiences]);
+            setNewEntry('');
+            setAttachments([]);
+        } catch (error) {
+            console.error('[MyNavigation] Failed to save experience:', error);
+            // Still update local state
+            setExperiences([entry, ...experiences]);
+            setNewEntry('');
+            setAttachments([]);
+            alert('Entry saved locally but may not sync. Please check your connection.');
+        } finally {
+            setIsSaving(false);
+        }
     };
     
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,12 +166,12 @@ const ExperienceJournal = ({ experiences, setExperiences }: { experiences: Exper
                 />
 
                 <div className="mt-4 flex flex-wrap items-center gap-4">
-                     <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-500 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                     <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isSaving} className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-500 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50">
                         <UploadCloud className="mr-2 h-5 w-5" />
                         Attach Files
                     </button>
-                    <button type="submit" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-lime-green-500 hover:bg-lime-green-600">
-                        Save Entry
+                    <button type="submit" disabled={isSaving || !newEntry.trim()} className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-lime-green-500 hover:bg-lime-green-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        {isSaving ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving...</> : 'Save Entry'}
                     </button>
                 </div>
                  {attachments.length > 0 && (
@@ -203,6 +222,7 @@ const ExperienceJournal = ({ experiences, setExperiences }: { experiences: Exper
 const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMessage[], setMessages: (m: ChatMessage[]) => void, client: Client }) => {
     const [newMessage, setNewMessage] = useState('');
     const [isTranslating, setIsTranslating] = useState(false);
+    const [isSending, setIsSending] = useState(false);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
     const patientLanguage = client.languages[0] || 'English';
 
@@ -210,18 +230,36 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
         endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSend = () => {
-        if (!newMessage.trim()) return;
+    const handleSend = async () => {
+        if (!newMessage.trim() || isSending) return;
+        
+        setIsSending(true);
         const message: ChatMessage = {
-            id: new Date().toISOString(),
+            id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             timestamp: new Date().toISOString(),
             sender: 'patient',
             text: newMessage,
             language: patientLanguage,
             isRead: false,
         };
-        setMessages([...messages, message]);
-        setNewMessage('');
+        
+        try {
+            // Save to database
+            await patientDataService.createMessage(client.id, message);
+            console.log('[MyNavigation] Message saved to database:', message.id);
+            
+            // Update local state
+            setMessages([...messages, message]);
+            setNewMessage('');
+        } catch (error) {
+            console.error('[MyNavigation] Failed to save message:', error);
+            // Still update local state so user sees the message
+            setMessages([...messages, message]);
+            setNewMessage('');
+            alert('Message sent but may not be saved. Please check your connection.');
+        } finally {
+            setIsSending(false);
+        }
     };
 
     const handleTranslate = async (text: string, targetLang: string) => {
@@ -264,12 +302,17 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                    className="flex-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-lime-green-500 focus:border-lime-green-500"
+                    onKeyPress={(e) => e.key === 'Enter' && !isSending && handleSend()}
+                    disabled={isSending}
+                    className="flex-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-lime-green-500 focus:border-lime-green-500 disabled:opacity-50"
                     placeholder={`Type your message in ${patientLanguage}...`}
                 />
-                <button onClick={handleSend} className="px-4 py-2 bg-baby-blue-500 text-white rounded-md hover:bg-baby-blue-600">
-                    <Send size={20}/>
+                <button 
+                    onClick={handleSend} 
+                    disabled={isSending || !newMessage.trim()}
+                    className="px-4 py-2 bg-baby-blue-500 text-white rounded-md hover:bg-baby-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isSending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20}/>}
                 </button>
             </div>
         </div>
