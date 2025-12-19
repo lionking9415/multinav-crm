@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Leaf, Mail, KeyRound, User } from 'lucide-react';
+import { Leaf, Mail, KeyRound, User, Loader2 } from 'lucide-react';
 import type { Client } from '../types';
-import { userService } from '../services/supabaseService';
+import { userService, clientService } from '../services/supabaseService';
 
 interface SimpleAuthPageProps {
   onStaffLogin: (userRole?: 'admin' | 'coordinator' | 'navigator', userEmail?: string) => void;
@@ -51,18 +51,46 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
     }
   };
 
-  const handlePatientSubmit = (e: React.FormEvent) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handlePatientSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     
-    const client = clients.find(c => 
-      c.id === clientId && c.password === clientPassword
-    );
-    
-    if (client) {
-      onPatientLogin(client);
-    } else {
-      setError('Invalid Client ID or password');
+    try {
+      // First try to authenticate against the database
+      const authenticatedClient = await clientService.authenticate(clientId, clientPassword);
+      
+      if (authenticatedClient) {
+        onPatientLogin(authenticatedClient);
+        return;
+      }
+      
+      // Fallback: Check mock clients (for demo purposes when database is empty)
+      const mockClient = clients.find(c => 
+        c.id === clientId && c.password === clientPassword
+      );
+      
+      if (mockClient) {
+        onPatientLogin(mockClient);
+      } else {
+        setError('Invalid Client ID or password. Please check your credentials and try again.');
+      }
+    } catch (error) {
+      console.error('Patient login error:', error);
+      // If database authentication fails, try mock clients
+      const mockClient = clients.find(c => 
+        c.id === clientId && c.password === clientPassword
+      );
+      
+      if (mockClient) {
+        onPatientLogin(mockClient);
+      } else {
+        setError('Login failed. Please try again or contact your healthcare navigator.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -207,13 +235,26 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
 
             <button
               type="submit"
-              className="w-full py-3 px-4 bg-baby-blue-500 hover:bg-baby-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all"
+              disabled={isLoading}
+              className="w-full py-3 px-4 bg-baby-blue-500 hover:bg-baby-blue-600 disabled:bg-baby-blue-300 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center"
             >
-              Access Patient Portal
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Access Patient Portal'
+              )}
             </button>
             
-            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-              Use your Client ID and password provided by your healthcare navigator
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4 space-y-2">
+              <p>Use your Client ID and password provided by your healthcare navigator</p>
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                <p className="font-medium text-gray-600 dark:text-gray-300">Demo accounts (if database is empty):</p>
+                <p>Client ID: C4F2A1 / Password: pass123</p>
+                <p>Client ID: C8B9D3 / Password: pass123</p>
+              </div>
             </div>
           </form>
         )}
