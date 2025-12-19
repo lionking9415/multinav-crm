@@ -94,6 +94,11 @@ export const clientService = {
     if (client.address !== undefined) updateData.address = client.address;
     if (client.postcode !== undefined) updateData.postcode = client.postcode;
     if (client.region !== undefined) updateData.region = client.region;
+    // Update password if provided (non-empty string)
+    if (client.password && client.password.trim() !== '') {
+      updateData.password_hash = client.password;
+      console.log('[ClientService] Updating password for client:', id);
+    }
     
     const { data, error } = await supabase
       .from('clients')
