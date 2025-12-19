@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import type { Client, HealthActivity, WorkforceData, ProgramResource, GpPractice, PatientData } from './types';
-import { clientService, activityService, workforceService, resourceService, gpPracticeService } from './services/supabaseService';
+import { clientService, activityService, workforceService, resourceService, gpPracticeService, patientDataService } from './services/supabaseService';
 import ClientDemographics from './components/ClientDemographics';
 import HealthNavigationActivities from './components/HealthNavigationActivities';
 import WorkforceTracking from './components/WorkforceTracking';
@@ -169,24 +169,56 @@ const App: React.FC = () => {
         setGpPractices(mockGpPractices);
         }
         
-        const mockPatientData: Record<string, PatientData> = {
-            'C4F2A1': {
-                experiences: [{ id: 'e1', date: '2024-05-18', content: 'The specialist was hard to understand, but the navigator helped me a lot by booking an interpreter.', isRead: true, attachments: [] }],
-                messages: [
-                    { id: 'm1', timestamp: '2024-06-10T10:00:00Z', sender: 'patient', text: '你好，我需要帮助预约我的下一次心脏病专家门诊。', language: 'Mandarin', isRead: false },
-                    { id: 'm2', timestamp: '2024-06-10T10:05:00Z', sender: 'navigator', text: "Of course, John. I will check the cardiologist's availability and book that for you. I will confirm by this afternoon.", language: 'English', isRead: true }
-                ],
-            },
-            'C8B9D3': {
-                experiences: [],
-                messages: [],
-            },
-             'C2D3E4': {
-                experiences: [{ id: 'e2', date: '2024-06-15', content: 'The maternal health nurse was very kind. I feel much more confident now.', isRead: false, attachments: [] }],
-                messages: [],
-            }
-        };
-        setPatientData(mockPatientData);
+        // Load patient data from database
+        try {
+          const dbPatientData = await patientDataService.getAllPatientData();
+          if (Object.keys(dbPatientData).length > 0) {
+            console.log('[App] Loaded patient data from database:', Object.keys(dbPatientData).length, 'clients');
+            setPatientData(dbPatientData);
+          } else {
+            // Use mock data if database is empty
+            console.log('[App] No patient data in database, using mock data');
+            const mockPatientData: Record<string, PatientData> = {
+                'C4F2A1': {
+                    experiences: [{ id: 'e1', date: '2024-05-18', content: 'The specialist was hard to understand, but the navigator helped me a lot by booking an interpreter.', isRead: true, attachments: [] }],
+                    messages: [
+                        { id: 'm1', timestamp: '2024-06-10T10:00:00Z', sender: 'patient', text: '你好，我需要帮助预约我的下一次心脏病专家门诊。', language: 'Mandarin', isRead: false },
+                        { id: 'm2', timestamp: '2024-06-10T10:05:00Z', sender: 'navigator', text: "Of course, John. I will check the cardiologist's availability and book that for you. I will confirm by this afternoon.", language: 'English', isRead: true }
+                    ],
+                },
+                'C8B9D3': {
+                    experiences: [],
+                    messages: [],
+                },
+                 'C2D3E4': {
+                    experiences: [{ id: 'e2', date: '2024-06-15', content: 'The maternal health nurse was very kind. I feel much more confident now.', isRead: false, attachments: [] }],
+                    messages: [],
+                }
+            };
+            setPatientData(mockPatientData);
+          }
+        } catch (error) {
+          console.error('[App] Error loading patient data:', error);
+          // Fallback to mock data
+          const mockPatientData: Record<string, PatientData> = {
+              'C4F2A1': {
+                  experiences: [{ id: 'e1', date: '2024-05-18', content: 'The specialist was hard to understand, but the navigator helped me a lot by booking an interpreter.', isRead: true, attachments: [] }],
+                  messages: [
+                      { id: 'm1', timestamp: '2024-06-10T10:00:00Z', sender: 'patient', text: '你好，我需要帮助预约我的下一次心脏病专家门诊。', language: 'Mandarin', isRead: false },
+                      { id: 'm2', timestamp: '2024-06-10T10:05:00Z', sender: 'navigator', text: "Of course, John. I will check the cardiologist's availability and book that for you. I will confirm by this afternoon.", language: 'English', isRead: true }
+                  ],
+              },
+              'C8B9D3': {
+                  experiences: [],
+                  messages: [],
+              },
+               'C2D3E4': {
+                  experiences: [{ id: 'e2', date: '2024-06-15', content: 'The maternal health nurse was very kind. I feel much more confident now.', isRead: false, attachments: [] }],
+                  messages: [],
+              }
+          };
+          setPatientData(mockPatientData);
+        }
 
         // Load users or use mock users
         if (dbUsers && dbUsers.length > 0) {
