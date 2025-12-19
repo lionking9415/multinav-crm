@@ -185,7 +185,7 @@ const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: st
     };
 
     return (
-        <div className="space-y-4">
+    <div className="space-y-4">
             {/* Info banner about translation */}
             {clientLanguage && clientLanguage !== 'English' && (
                 <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-baby-blue-50 to-lime-green-50 dark:from-baby-blue-900/30 dark:to-lime-green-900/30 rounded-lg border border-baby-blue-200 dark:border-baby-blue-800">
@@ -201,9 +201,9 @@ const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: st
                 const translation = translations[entry.id];
                 
                 return (
-                    <div key={entry.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-md border-l-4 border-baby-blue-300 dark:border-baby-blue-600">
+             <div key={entry.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-md border-l-4 border-baby-blue-300 dark:border-baby-blue-600">
                         <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleString()}</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleString()}</p>
                             {needsTranslation && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
                                     <Languages size={12} />
@@ -266,25 +266,25 @@ const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: st
                         )}
                         
                         {/* Attachments */}
-                        {entry.attachments && entry.attachments.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                                <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Attachments:</h4>
-                                <ul className="space-y-1">
-                                    {entry.attachments.map((file, index) => (
-                                        <li key={index}>
-                                            <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
-                                                <Paperclip size={14} className="mr-1" /> {file.name}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                {entry.attachments && entry.attachments.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Attachments:</h4>
+                        <ul className="space-y-1">
+                            {entry.attachments.map((file, index) => (
+                                <li key={index}>
+                                    <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
+                                        <Paperclip size={14} className="mr-1" /> {file.name}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
+                )}
+            </div>
                 );
             }) : <p className="text-gray-500 dark:text-gray-400">No journal entries from this client.</p>}
-        </div>
-    );
+    </div>
+);
 };
 
 // Cache for translations to avoid re-translating the same message
@@ -374,7 +374,7 @@ const MessagesView: React.FC<{ messages: ChatMessage[], client: Client }> = ({ m
                 const translation = translations[msg.id];
                 
                 return (
-                    <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === 'patient' ? '' : 'flex-row-reverse'}`}>
+                <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === 'patient' ? '' : 'flex-row-reverse'}`}>
                         <div className={`rounded-lg max-w-lg ${msg.sender === 'patient' ? 'bg-baby-blue-100 dark:bg-baby-blue-900/50' : 'bg-lime-green-100 dark:bg-lime-green-900/50'}`}>
                             {/* Language badge for non-English messages */}
                             {isNonEnglishPatientMessage && (
@@ -447,10 +447,10 @@ const MessagesView: React.FC<{ messages: ChatMessage[], client: Client }> = ({ m
                         </div>
                         
                         {/* Avatar */}
-                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center font-bold text-gray-600 dark:text-gray-200 text-sm flex-shrink-0" title={msg.sender === 'patient' ? client.fullName : 'Navigator'}>
-                            {msg.sender === 'patient' ? client.fullName.charAt(0) : 'N'}
-                        </div>
+                     <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center font-bold text-gray-600 dark:text-gray-200 text-sm flex-shrink-0" title={msg.sender === 'patient' ? client.fullName : 'Navigator'}>
+                        {msg.sender === 'patient' ? client.fullName.charAt(0) : 'N'}
                     </div>
+                </div>
                 );
             })}
             {messages.length === 0 && <p className="text-gray-500 dark:text-gray-400">No messages exchanged with this client.</p>}
