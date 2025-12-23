@@ -17,10 +17,12 @@ interface MyNavigationProps {
 const MyNavigation: React.FC<MyNavigationProps> = ({ client, data, setData, onLogout, isDarkMode, toggleDarkMode }) => {
     const [activeTab, setActiveTab] = useState('experience');
 
+    const patientLanguage = client.languages[0] || 'English';
+
     const renderContent = () => {
         switch (activeTab) {
             case 'experience':
-                return <ExperienceJournal experiences={data.experiences} setExperiences={(newExperiences) => setData({ ...data, experiences: newExperiences })} clientId={client.id} />;
+                return <ExperienceJournal experiences={data.experiences} setExperiences={(newExperiences) => setData({ ...data, experiences: newExperiences })} clientId={client.id} patientLanguage={patientLanguage} />;
             case 'messages':
                 return <CommunicationHub messages={data.messages} setMessages={(newMessages) => setData({ ...data, messages: newMessages })} client={client} />;
             default:
@@ -79,10 +81,12 @@ const MyNavigation: React.FC<MyNavigationProps> = ({ client, data, setData, onLo
 
 // Sub-components for MyNavigation
 
-const ExperienceJournal = ({ experiences, setExperiences, clientId }: { experiences: ExperienceEntry[], setExperiences: (e: ExperienceEntry[]) => void, clientId: string }) => {
+const ExperienceJournal = ({ experiences, setExperiences, clientId, patientLanguage }: { experiences: ExperienceEntry[], setExperiences: (e: ExperienceEntry[]) => void, clientId: string, patientLanguage: string }) => {
     const [newEntry, setNewEntry] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [translatingId, setTranslatingId] = useState<string | null>(null);
+    const [translations, setTranslations] = useState<Record<string, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const readFileAsDataURL = (file: File): Promise<Attachment> => {
@@ -143,17 +147,41 @@ const ExperienceJournal = ({ experiences, setExperiences, clientId }: { experien
         setAttachments(prev => prev.filter(file => file !== fileToRemove));
     };
 
+    const handleTranslate = async (entryId: string, text: string) => {
+        if (!text || translations[entryId]) return;
+        setTranslatingId(entryId);
+        try {
+            const translatedText = await translateText(text, 'English');
+            setTranslations(prev => ({ ...prev, [entryId]: translatedText }));
+        } catch (error) {
+            console.error('Translation failed:', error);
+            alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setTranslatingId(null);
+        }
+    };
+
+    const showTranslation = patientLanguage !== 'English';
+
     return (
         <div>
             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">My Experience Journal</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Share your experiences, needs, or difficulties with your navigator. Your notes are private and will help us support you better.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Share your experiences, needs, or difficulties with your navigator. Your notes are private and will help us support you better.
+                {showTranslation && (
+                    <span className="block mt-1 text-lime-green-600 dark:text-lime-green-400">
+                        <Languages size={14} className="inline mr-1" />
+                        Write in {patientLanguage} - staff will see it translated to English.
+                    </span>
+                )}
+            </p>
             <form onSubmit={handleSubmit}>
                 <textarea
                     value={newEntry}
                     onChange={(e) => setNewEntry(e.target.value)}
                     rows={5}
                     className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-lime-green-500 focus:border-lime-green-500"
-                    placeholder="Type your thoughts here..."
+                    placeholder={`Type your thoughts here${showTranslation ? ` in ${patientLanguage}` : ''}...`}
                 />
 
                 <input
@@ -193,26 +221,56 @@ const ExperienceJournal = ({ experiences, setExperiences, clientId }: { experien
             <div className="mt-6">
                 <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-2">Past Entries</h3>
                 <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                    {experiences.length > 0 ? experiences.map(entry => (
-                        <div key={entry.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleDateString()}</p>
-                            <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{entry.content}</p>
-                            {entry.attachments && entry.attachments.length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                                    <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Attachments:</h4>
-                                    <ul className="space-y-1">
-                                        {entry.attachments.map((file, index) => (
-                                            <li key={index}>
-                                                <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
-                                                    <Paperclip size={14} className="mr-1" /> {file.name}
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
+                    {experiences.length > 0 ? experiences.map(entry => {
+                        const hasTranslation = translations[entry.id];
+                        const isTranslatingThis = translatingId === entry.id;
+                        
+                        return (
+                            <div key={entry.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                                <div className="flex justify-between items-start">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleDateString()}</p>
+                                    {showTranslation && !hasTranslation && (
+                                        <button 
+                                            onClick={() => handleTranslate(entry.id, entry.content)}
+                                            disabled={isTranslatingThis}
+                                            className="text-xs text-baby-blue-600 dark:text-baby-blue-400 hover:underline disabled:opacity-50 flex items-center gap-1"
+                                            title="See English translation"
+                                        >
+                                            {isTranslatingThis ? <Loader2 size={12} className="animate-spin" /> : <Languages size={12} />}
+                                            <span>See English</span>
+                                        </button>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-                    )) : <p className="text-gray-500 dark:text-gray-400">No entries yet.</p>}
+                                <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap mt-1">{entry.content}</p>
+                                
+                                {/* Show English translation inline */}
+                                {hasTranslation && (
+                                    <div className="mt-2 p-2 bg-lime-green-50 dark:bg-lime-green-900/30 rounded border-l-2 border-lime-green-500">
+                                        <span className="text-xs font-semibold text-lime-green-700 dark:text-lime-green-300 flex items-center gap-1 mb-1">
+                                            <Languages size={12} />
+                                            English (what staff sees):
+                                        </span>
+                                        <p className="text-sm text-lime-green-800 dark:text-lime-green-200">{translations[entry.id]}</p>
+                                    </div>
+                                )}
+                                
+                                {entry.attachments && entry.attachments.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Attachments:</h4>
+                                        <ul className="space-y-1">
+                                            {entry.attachments.map((file, index) => (
+                                                <li key={index}>
+                                                    <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
+                                                        <Paperclip size={14} className="mr-1" /> {file.name}
+                                                    </a>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }) : <p className="text-gray-500 dark:text-gray-400">No entries yet.</p>}
                 </div>
             </div>
         </div>
@@ -221,7 +279,8 @@ const ExperienceJournal = ({ experiences, setExperiences, clientId }: { experien
 
 const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMessage[], setMessages: (m: ChatMessage[]) => void, client: Client }) => {
     const [newMessage, setNewMessage] = useState('');
-    const [isTranslating, setIsTranslating] = useState(false);
+    const [translatingId, setTranslatingId] = useState<string | null>(null);
+    const [translations, setTranslations] = useState<Record<string, string>>({});
     const [isSending, setIsSending] = useState(false);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
     const patientLanguage = client.languages[0] || 'English';
@@ -262,39 +321,80 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
         }
     };
 
-    const handleTranslate = async (text: string, targetLang: string) => {
-        if (!text) return;
-        setIsTranslating(true);
+    const handleTranslate = async (msgId: string, text: string, targetLang: string) => {
+        if (!text || translations[msgId]) return;
+        setTranslatingId(msgId);
         try {
             const translatedText = await translateText(text, targetLang);
-            alert(`Translation to ${targetLang}:\n\n${translatedText}`);
+            setTranslations(prev => ({ ...prev, [msgId]: translatedText }));
         } catch (error) {
+            console.error('Translation failed:', error);
             alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
-            setIsTranslating(false);
+            setTranslatingId(null);
         }
+    };
+
+    // Determine if a message needs translation
+    const needsTranslation = (msg: ChatMessage) => {
+        // Navigator messages in English need translation to patient's language
+        if (msg.sender === 'navigator' && patientLanguage !== 'English') {
+            return { needs: true, targetLang: patientLanguage, label: `Translate to ${patientLanguage}` };
+        }
+        // Patient's own messages in non-English need translation to English (to see what staff sees)
+        if (msg.sender === 'patient' && patientLanguage !== 'English') {
+            return { needs: true, targetLang: 'English', label: 'See English translation' };
+        }
+        return { needs: false, targetLang: '', label: '' };
     };
 
     return (
         <div>
             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Secure Messages</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                <Languages size={14} className="inline mr-1" />
+                Write in {patientLanguage} - your messages will be translated for staff automatically.
+            </p>
             <div className="h-80 border rounded-md p-4 space-y-4 overflow-y-auto flex flex-col bg-gray-50 dark:bg-gray-700/50">
-                {messages.length > 0 ? messages.map(msg => (
-                    <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'patient' ? 'justify-end' : 'justify-start'}`}>
-                        {msg.sender === 'navigator' && <div className="w-8 h-8 rounded-full bg-lime-green-200 flex items-center justify-center font-bold text-lime-green-700 text-sm">N</div>}
-                        <div className={`max-w-xs p-3 rounded-lg ${msg.sender === 'patient' ? 'bg-baby-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100'}`}>
-                            <p>{msg.text}</p>
-                            <div className="text-xs opacity-70 mt-1 flex items-center justify-between">
-                                <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                {msg.sender === 'navigator' && msg.language !== patientLanguage && (
-                                    <button onClick={() => handleTranslate(msg.text, patientLanguage)} disabled={isTranslating} className="ml-2 p-1 rounded-full hover:bg-black/10 disabled:opacity-50">
-                                        <Languages size={14} />
-                                    </button>
+                {messages.length > 0 ? messages.map(msg => {
+                    const translationInfo = needsTranslation(msg);
+                    const hasTranslation = translations[msg.id];
+                    const isTranslatingThis = translatingId === msg.id;
+                    
+                    return (
+                        <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'patient' ? 'justify-end' : 'justify-start'}`}>
+                            {msg.sender === 'navigator' && <div className="w-8 h-8 rounded-full bg-lime-green-200 flex items-center justify-center font-bold text-lime-green-700 text-sm">N</div>}
+                            <div className={`max-w-xs ${msg.sender === 'patient' ? '' : ''}`}>
+                                <div className={`p-3 rounded-lg ${msg.sender === 'patient' ? 'bg-baby-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100'}`}>
+                                    <p>{msg.text}</p>
+                                    <div className="text-xs opacity-70 mt-1 flex items-center justify-between">
+                                        <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        {translationInfo.needs && !hasTranslation && (
+                                            <button 
+                                                onClick={() => handleTranslate(msg.id, msg.text, translationInfo.targetLang)} 
+                                                disabled={isTranslatingThis} 
+                                                className="ml-2 p-1 rounded-full hover:bg-black/10 disabled:opacity-50 flex items-center gap-1"
+                                                title={translationInfo.label}
+                                            >
+                                                {isTranslatingThis ? <Loader2 size={14} className="animate-spin" /> : <Languages size={14} />}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Show translation inline below the message */}
+                                {hasTranslation && (
+                                    <div className={`mt-1 p-2 rounded text-xs ${msg.sender === 'patient' ? 'bg-baby-blue-100 dark:bg-baby-blue-900/50 text-baby-blue-800 dark:text-baby-blue-200' : 'bg-lime-green-100 dark:bg-lime-green-900/50 text-lime-green-800 dark:text-lime-green-200'}`}>
+                                        <span className="font-semibold flex items-center gap-1 mb-1">
+                                            <Languages size={12} />
+                                            {msg.sender === 'patient' ? 'English (what staff sees):' : `${patientLanguage}:`}
+                                        </span>
+                                        <p>{translations[msg.id]}</p>
+                                    </div>
                                 )}
                             </div>
                         </div>
-                    </div>
-                )) : <p className="text-gray-500 dark:text-gray-400 text-center m-auto">No messages yet. Send a message to start the conversation.</p>}
+                    );
+                }) : <p className="text-gray-500 dark:text-gray-400 text-center m-auto">No messages yet. Send a message to start the conversation.</p>}
                 <div ref={endOfMessagesRef} />
             </div>
             <div className="mt-4 flex gap-2">
