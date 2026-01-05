@@ -22,8 +22,8 @@ interface PendingUser {
 
 const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatientLogin, clients }) => {
   const [authMode, setAuthMode] = useState<'staff' | 'patient'>('staff');
-  const [staffEmail, setStaffEmail] = useState('admin@multinav.com');
-  const [staffPassword, setStaffPassword] = useState('password123');
+  const [staffEmail, setStaffEmail] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientPassword, setClientPassword] = useState('');
   const [error, setError] = useState('');
