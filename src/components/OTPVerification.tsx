@@ -97,7 +97,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({
     setError('');
 
     try {
-      const result = await verifyOTP(userId, code);
+      // Pass email to verifyOTP for Supabase Auth verification
+      const result = await verifyOTP(userId, userEmail, code);
       
       if (result.success) {
         setSuccess('Verification successful!');

@@ -1,15 +1,5 @@
 import { supabase } from './supabaseService';
 
-// Email sending method: 'supabase' (free, built-in) or 'resend' (requires domain)
-const EMAIL_METHOD = 'supabase'; // Change to 'resend' if you have a verified domain
-
-// Resend API key - only needed if EMAIL_METHOD is 'resend'
-const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY || '';
-
-// Supabase Edge Function URL for sending OTP emails (Resend method)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hmruaeewpurjmjgqlojk.supabase.co';
-const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-otp-email`;
-
 // Device fingerprinting
 export function generateDeviceFingerprint(): string {
   const components = [
@@ -59,11 +49,6 @@ export function getDeviceInfo(): { name: string; browser: string; os: string } {
   };
 }
 
-// Generate 6-digit OTP
-export function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
 // Check if device is trusted
 export async function isDeviceTrusted(userId: string, deviceHash: string): Promise<boolean> {
   try {
@@ -80,7 +65,7 @@ export async function isDeviceTrusted(userId: string, deviceHash: string): Promi
     }
     
     // Check if device trust has expired
-    if (new Date(data.expires_at) < new Date()) {
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
       console.log('[2FA] Device trust has expired');
       // Delete expired device
       await supabase
@@ -195,281 +180,106 @@ export async function revokeAllTrustedDevices(userId: string): Promise<boolean> 
   }
 }
 
-// Create and store OTP
-export async function createOTP(userId: string, userEmail: string): Promise<string | null> {
-  try {
-    const otp = generateOTP();
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minute expiry
-    
-    // Invalidate any existing OTPs for this user
-    await supabase
-      .from('user_otp_codes')
-      .update({ used: true })
-      .eq('user_id', userId)
-      .eq('used', false);
-    
-    // Create new OTP
-    const { error } = await supabase
-      .from('user_otp_codes')
-      .insert({
-        user_id: userId,
-        user_email: userEmail,
-        otp_code: otp,
-        expires_at: expiresAt.toISOString(),
-        attempts: 0,
-        used: false
-      });
-    
-    if (error) {
-      console.error('[2FA] Error creating OTP:', error);
-      return null;
-    }
-    
-    console.log('[2FA] OTP created successfully');
-    return otp;
-  } catch (error) {
-    console.error('[2FA] Error creating OTP:', error);
-    return null;
-  }
-}
+// ==========================================
+// SUPABASE AUTH OTP FUNCTIONS
+// ==========================================
 
-// Verify OTP
-export async function verifyOTP(userId: string, inputOTP: string): Promise<{ success: boolean; message: string }> {
-  try {
-    // Get the latest unused OTP for this user
-    const { data, error } = await supabase
-      .from('user_otp_codes')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('used', false)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    
-    if (error || !data) {
-      return { success: false, message: 'No valid OTP found. Please request a new code.' };
-    }
-    
-    // Check if expired
-    if (new Date(data.expires_at) < new Date()) {
-      await supabase
-        .from('user_otp_codes')
-        .update({ used: true })
-        .eq('id', data.id);
-      return { success: false, message: 'OTP has expired. Please request a new code.' };
-    }
-    
-    // Check attempts
-    if (data.attempts >= 3) {
-      await supabase
-        .from('user_otp_codes')
-        .update({ used: true })
-        .eq('id', data.id);
-      return { success: false, message: 'Too many failed attempts. Please request a new code.' };
-    }
-    
-    // Verify OTP
-    if (data.otp_code !== inputOTP) {
-      // Increment attempts
-      await supabase
-        .from('user_otp_codes')
-        .update({ attempts: data.attempts + 1 })
-        .eq('id', data.id);
-      
-      const remainingAttempts = 2 - data.attempts;
-      return { 
-        success: false, 
-        message: remainingAttempts > 0 
-          ? `Invalid code. ${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining.`
-          : 'Invalid code. No attempts remaining.'
-      };
-    }
-    
-    // Mark OTP as used
-    await supabase
-      .from('user_otp_codes')
-      .update({ used: true })
-      .eq('id', data.id);
-    
-    console.log('[2FA] OTP verified successfully');
-    return { success: true, message: 'OTP verified successfully' };
-  } catch (error) {
-    console.error('[2FA] Error verifying OTP:', error);
-    return { success: false, message: 'Verification failed. Please try again.' };
-  }
-}
-
-// Send OTP via Supabase Auth's built-in email (FREE - no domain required)
-async function sendOTPViaSupabaseAuth(email: string, otp: string, userName: string): Promise<boolean> {
-  try {
-    console.log('[2FA] Sending OTP via Supabase Auth to:', email);
-    
-    // Use Supabase's built-in email sending via the auth.admin API
-    // We'll use a custom email template approach via database trigger + edge function
-    
-    // Method: Use Supabase's signInWithOtp which sends a magic link/OTP email
-    // We'll intercept this and use our own OTP code
-    
-    // First, try to send via Supabase's built-in email function
-    const { error } = await supabase.functions.invoke('send-otp-supabase', {
-      body: { email, otp, userName }
-    });
-    
-    if (!error) {
-      console.log('[2FA] Email sent successfully via Supabase function');
-      return true;
-    }
-    
-    console.warn('[2FA] Supabase function error:', error);
-    
-    // Fallback: Use database-based email queue (if configured)
-    const { error: queueError } = await supabase
-      .from('email_queue')
-      .insert({
-        to_email: email,
-        subject: `Your MultiNav Login Code: ${otp}`,
-        body: `Hi ${userName},\n\nYour verification code is: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this code, please ignore this email.\n\n- MultiNav iCRM Team`,
-        html_body: generateOTPEmailHTML(otp, userName),
-        status: 'pending',
-        created_at: new Date().toISOString()
-      });
-    
-    if (!queueError) {
-      console.log('[2FA] Email queued for sending');
-      return true;
-    }
-    
-    console.warn('[2FA] Email queue error:', queueError);
-    return false;
-  } catch (error) {
-    console.error('[2FA] Error sending via Supabase:', error);
-    return false;
-  }
-}
-
-// Send OTP via Resend (requires verified domain)
-async function sendOTPViaResend(email: string, otp: string, userName: string): Promise<boolean> {
-  try {
-    console.log('[2FA] Sending OTP via Resend Edge Function to:', email);
-    
-    const response = await fetch(EDGE_FUNCTION_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify({ email, otp, userName })
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok && result.success) {
-      console.log('[2FA] Email sent successfully via Resend:', result.messageId);
-      return true;
-    }
-    
-    console.warn('[2FA] Resend error:', result.error);
-    return false;
-  } catch (error) {
-    console.error('[2FA] Error sending via Resend:', error);
-    return false;
-  }
-}
-
-// Generate HTML email template
-function generateOTPEmailHTML(otp: string, userName: string): string {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #22c55e; margin: 0;">🌿 MultiNav iCRM</h1>
-        <p style="color: #666; margin-top: 5px;">Integrated Care Reporting & Management</p>
-      </div>
-      
-      <div style="background: #f8fafc; border-radius: 10px; padding: 30px; text-align: center;">
-        <h2 style="color: #1e293b; margin-top: 0;">Verify Your Login</h2>
-        <p style="color: #64748b;">Hi ${userName},</p>
-        <p style="color: #64748b;">We noticed you're logging in from a new device. Please use the verification code below:</p>
-        
-        <div style="background: #22c55e; color: white; font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px 40px; border-radius: 10px; margin: 30px 0; display: inline-block;">
-          ${otp}
-        </div>
-        
-        <p style="color: #94a3b8; font-size: 14px;">This code expires in <strong>10 minutes</strong>.</p>
-      </div>
-      
-      <div style="margin-top: 30px; padding: 20px; background: #fef3c7; border-radius: 10px;">
-        <p style="color: #92400e; margin: 0; font-size: 14px;">
-          <strong>⚠️ Security Notice:</strong> If you didn't request this code, please ignore this email. 
-          Someone may have entered your email address by mistake.
-        </p>
-      </div>
-      
-      <div style="text-align: center; margin-top: 30px; color: #94a3b8; font-size: 12px;">
-        <p>© ${new Date().getFullYear()} MultiNav iCRM. All rights reserved.</p>
-      </div>
-    </div>
-  `;
-}
-
-// Send OTP via email - main function
-export async function sendOTPEmail(email: string, otp: string, userName: string): Promise<boolean> {
-  try {
-    console.log('[2FA] Sending OTP email to:', email);
-    console.log('[2FA] Using email method:', EMAIL_METHOD);
-    
-    // Always log OTP to console for development/testing
-    console.log(`%c[2FA] Your OTP code is: ${otp}`, 'background: #22c55e; color: white; font-size: 16px; padding: 10px;');
-    
-    let emailSent = false;
-    
-    // Try the configured email method
-    if (EMAIL_METHOD === 'supabase') {
-      emailSent = await sendOTPViaSupabaseAuth(email, otp, userName);
-    } else if (EMAIL_METHOD === 'resend') {
-      emailSent = await sendOTPViaResend(email, otp, userName);
-    }
-    
-    // If email sending failed, still return true so user can use console OTP
-    if (!emailSent) {
-      console.warn('[2FA] Email sending failed, but OTP is available in console');
-      console.log(`%c[2FA] FALLBACK: Use this OTP code: ${otp}`, 'background: #f59e0b; color: white; font-size: 18px; padding: 12px; border-radius: 8px;');
-    }
-    
-    // Return true so the 2FA flow continues (user can use console OTP)
-    return true;
-  } catch (error) {
-    console.error('[2FA] Error sending OTP email:', error);
-    // Still return true - OTP is logged to console
-    return true;
-  }
-}
-
-// Main function to initiate 2FA
+/**
+ * Initiate 2FA using Supabase Auth's built-in OTP
+ * This sends an OTP email using Supabase's email service
+ */
 export async function initiate2FA(userId: string, userEmail: string, userName: string): Promise<{ success: boolean; message: string }> {
   try {
-    // Generate OTP
-    const otp = await createOTP(userId, userEmail);
-    if (!otp) {
-      return { success: false, message: 'Failed to generate verification code. Please try again.' };
-    }
+    console.log('[2FA] Initiating Supabase Auth OTP for:', userEmail);
     
-    // Send email
-    const emailSent = await sendOTPEmail(userEmail, otp, userName);
-    if (!emailSent) {
-      return { success: false, message: 'Failed to send verification email. Please try again.' };
+    // Use Supabase Auth's signInWithOtp which sends an email with OTP
+    const { error } = await supabase.auth.signInWithOtp({
+      email: userEmail,
+      options: {
+        shouldCreateUser: false, // Don't create a new auth user, just send OTP
+        data: {
+          userId: userId,
+          userName: userName,
+          purpose: '2fa_verification'
+        }
+      }
+    });
+
+    if (error) {
+      console.error('[2FA] Supabase Auth OTP error:', error);
+      
+      // Handle specific errors
+      if (error.message.includes('rate limit')) {
+        return { success: false, message: 'Too many requests. Please wait a moment before trying again.' };
+      }
+      if (error.message.includes('not allowed')) {
+        return { success: false, message: 'Email OTP is not enabled. Please contact support.' };
+      }
+      
+      return { success: false, message: error.message };
     }
-    
+
     // Mask email for display
     const maskedEmail = userEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3');
     
+    console.log('[2FA] OTP email sent successfully via Supabase Auth');
     return { 
       success: true, 
       message: `Verification code sent to ${maskedEmail}` 
     };
   } catch (error) {
     console.error('[2FA] Error initiating 2FA:', error);
-    return { success: false, message: 'Failed to initiate verification. Please try again.' };
+    return { success: false, message: 'Failed to send verification code. Please try again.' };
   }
 }
 
+/**
+ * Verify OTP using Supabase Auth
+ */
+export async function verifyOTP(userId: string, userEmail: string, otpCode: string): Promise<{ success: boolean; message: string }> {
+  try {
+    console.log('[2FA] Verifying OTP for:', userEmail);
+    
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: userEmail,
+      token: otpCode,
+      type: 'email' // Use 'email' type for email OTP
+    });
+
+    if (error) {
+      console.error('[2FA] OTP verification error:', error);
+      
+      // Handle specific errors
+      if (error.message.includes('expired')) {
+        return { success: false, message: 'Code has expired. Please request a new one.' };
+      }
+      if (error.message.includes('invalid')) {
+        return { success: false, message: 'Invalid code. Please check and try again.' };
+      }
+      
+      return { success: false, message: error.message };
+    }
+
+    if (data?.user || data?.session) {
+      console.log('[2FA] OTP verified successfully');
+      
+      // Sign out from Supabase Auth since we're using our own auth system
+      // This prevents the Supabase session from interfering
+      await supabase.auth.signOut();
+      
+      return { success: true, message: 'Verification successful!' };
+    }
+
+    return { success: false, message: 'Verification failed. Please try again.' };
+  } catch (error) {
+    console.error('[2FA] Error verifying OTP:', error);
+    return { success: false, message: 'Verification failed. Please try again.' };
+  }
+}
+
+/**
+ * Resend OTP - just calls initiate2FA again
+ */
+export async function resendOTP(userId: string, userEmail: string, userName: string): Promise<{ success: boolean; message: string }> {
+  return initiate2FA(userId, userEmail, userName);
+}
