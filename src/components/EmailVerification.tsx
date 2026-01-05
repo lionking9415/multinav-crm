@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Mail, Loader2, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Inbox } from 'lucide-react';
+import { Mail, Loader2, RefreshCw, CheckCircle, AlertCircle, Inbox } from 'lucide-react';
 import { initiate2FA, saveTrustedDevice, generateDeviceFingerprint } from '../services/twoFactorService';
 import { supabase } from '../services/supabaseService';
 
@@ -23,7 +23,6 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
   const [success, setSuccess] = useState('');
   const [trustDevice, setTrustDevice] = useState(true);
   const [resendCooldown, setResendCooldown] = useState(60); // Start with cooldown since email was just sent
-  const [isChecking, setIsChecking] = useState(false);
   
   // Mask email for display
   const maskedEmail = userEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3');
@@ -66,37 +65,6 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
     };
   }, [userId, userEmail, trustDevice, onVerified]);
 
-  // Check if user has verified (for when they click link in same browser)
-  const handleCheckVerification = async () => {
-    setIsChecking(true);
-    setError('');
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        setSuccess('Verification successful!');
-        
-        if (trustDevice) {
-          const deviceHash = generateDeviceFingerprint();
-          await saveTrustedDevice(userId, userEmail, deviceHash);
-        }
-        
-        await supabase.auth.signOut();
-        
-        setTimeout(() => {
-          onVerified();
-        }, 1000);
-      } else {
-        setError('Not verified yet. Please click the link in your email.');
-      }
-    } catch (err) {
-      setError('Failed to check verification status.');
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
   const handleResend = async () => {
     if (resendCooldown > 0) return;
     
@@ -118,25 +86,6 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
       setIsResending(false);
     }
   };
-
-  // Get email provider URL for quick access
-  const getEmailProviderUrl = () => {
-    const domain = userEmail.split('@')[1]?.toLowerCase();
-    const providers: Record<string, string> = {
-      'gmail.com': 'https://mail.google.com',
-      'googlemail.com': 'https://mail.google.com',
-      'outlook.com': 'https://outlook.live.com',
-      'hotmail.com': 'https://outlook.live.com',
-      'live.com': 'https://outlook.live.com',
-      'yahoo.com': 'https://mail.yahoo.com',
-      'icloud.com': 'https://www.icloud.com/mail',
-      'protonmail.com': 'https://mail.proton.me',
-      'proton.me': 'https://mail.proton.me',
-    };
-    return providers[domain] || null;
-  };
-
-  const emailProviderUrl = getEmailProviderUrl();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-baby-blue-100 to-lime-green-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
@@ -186,38 +135,6 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
             <li>You'll be automatically logged in</li>
           </ol>
         </div>
-
-        {/* Open Email Button */}
-        {emailProviderUrl && (
-          <a
-            href={emailProviderUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-3 px-4 bg-lime-green-500 hover:bg-lime-green-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 mb-4"
-          >
-            <ExternalLink size={20} />
-            Open Email App
-          </a>
-        )}
-
-        {/* Check Verification Button */}
-        <button
-          onClick={handleCheckVerification}
-          disabled={isChecking}
-          className="w-full py-3 px-4 bg-baby-blue-500 hover:bg-baby-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-        >
-          {isChecking ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Checking...
-            </>
-          ) : (
-            <>
-              <Shield size={20} />
-              I've Clicked the Link
-            </>
-          )}
-        </button>
 
         {/* Trust Device Checkbox */}
         <div className="mt-6">
