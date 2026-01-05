@@ -241,52 +241,41 @@ export async function initiate2FA(userId: string, userEmail: string, userName: s
 }
 
 /**
- * Verify OTP using Supabase Auth
+ * Check if user is verified via magic link
+ * This is called after user clicks the link in their email
  */
-export async function verifyOTP(userId: string, userEmail: string, otpCode: string): Promise<{ success: boolean; message: string }> {
+export async function checkVerificationStatus(): Promise<{ verified: boolean; session: any }> {
   try {
-    console.log('[2FA] Verifying OTP for:', userEmail);
+    const { data: { session } } = await supabase.auth.getSession();
     
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: userEmail,
-      token: otpCode,
-      type: 'email' // Use 'email' type for email OTP
-    });
-
-    if (error) {
-      console.error('[2FA] OTP verification error:', error);
-      
-      // Handle specific errors
-      if (error.message.includes('expired')) {
-        return { success: false, message: 'Code has expired. Please request a new one.' };
-      }
-      if (error.message.includes('invalid')) {
-        return { success: false, message: 'Invalid code. Please check and try again.' };
-      }
-      
-      return { success: false, message: error.message };
+    if (session) {
+      console.log('[2FA] User is verified via magic link');
+      return { verified: true, session };
     }
-
-    if (data?.user || data?.session) {
-      console.log('[2FA] OTP verified successfully');
-      
-      // Sign out from Supabase Auth since we're using our own auth system
-      // This prevents the Supabase session from interfering
-      await supabase.auth.signOut();
-      
-      return { success: true, message: 'Verification successful!' };
-    }
-
-    return { success: false, message: 'Verification failed. Please try again.' };
+    
+    return { verified: false, session: null };
   } catch (error) {
-    console.error('[2FA] Error verifying OTP:', error);
-    return { success: false, message: 'Verification failed. Please try again.' };
+    console.error('[2FA] Error checking verification status:', error);
+    return { verified: false, session: null };
   }
 }
 
 /**
- * Resend OTP - just calls initiate2FA again
+ * Sign out from Supabase Auth
+ * Called after verification to clean up the Supabase session
  */
-export async function resendOTP(userId: string, userEmail: string, userName: string): Promise<{ success: boolean; message: string }> {
+export async function cleanupSupabaseSession(): Promise<void> {
+  try {
+    await supabase.auth.signOut();
+    console.log('[2FA] Supabase session cleaned up');
+  } catch (error) {
+    console.error('[2FA] Error cleaning up session:', error);
+  }
+}
+
+/**
+ * Resend verification email - just calls initiate2FA again
+ */
+export async function resendVerificationEmail(userId: string, userEmail: string, userName: string): Promise<{ success: boolean; message: string }> {
   return initiate2FA(userId, userEmail, userName);
 }

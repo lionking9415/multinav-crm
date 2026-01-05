@@ -3,7 +3,7 @@ import { Leaf, Mail, KeyRound, User, Loader2 } from 'lucide-react';
 import type { Client } from '../types';
 import { userService, clientService } from '../services/supabaseService';
 import { isDeviceTrusted, initiate2FA, generateDeviceFingerprint } from '../services/twoFactorService';
-import OTPVerification from './OTPVerification';
+import EmailVerification from './EmailVerification';
 
 interface SimpleAuthPageProps {
   onStaffLogin: (userRole?: 'admin' | 'coordinator' | 'navigator', userEmail?: string) => void;
@@ -191,10 +191,10 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
     }
   };
 
-  // Show 2FA verification screen if needed
+  // Show email verification screen if needed
   if (show2FA && pendingUser) {
     return (
-      <OTPVerification
+      <EmailVerification
         userId={pendingUser.id}
         userEmail={pendingUser.email}
         userName={pendingUser.name}
