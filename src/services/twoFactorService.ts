@@ -1,5 +1,8 @@
 import { supabase } from './supabaseService';
 
+// 2FA Service using Supabase Auth built-in OTP
+// Last updated: 2025-01-05 - Using signInWithOtp for email delivery
+
 // Device fingerprinting
 export function generateDeviceFingerprint(): string {
   const components = [
