@@ -196,10 +196,11 @@ export async function initiate2FA(userId: string, userEmail: string, userName: s
     console.log('[2FA] Initiating Supabase Auth OTP for:', userEmail);
     
     // Use Supabase Auth's signInWithOtp which sends an email with OTP
+    // Setting shouldCreateUser: true ensures the OTP is sent even if user doesn't exist in Supabase Auth
     const { error } = await supabase.auth.signInWithOtp({
       email: userEmail,
       options: {
-        shouldCreateUser: false, // Don't create a new auth user, just send OTP
+        shouldCreateUser: true, // Allow creating user in Supabase Auth if needed
         data: {
           userId: userId,
           userName: userName,
@@ -212,11 +213,14 @@ export async function initiate2FA(userId: string, userEmail: string, userName: s
       console.error('[2FA] Supabase Auth OTP error:', error);
       
       // Handle specific errors
-      if (error.message.includes('rate limit')) {
+      if (error.message.includes('rate limit') || error.message.includes('Rate limit')) {
         return { success: false, message: 'Too many requests. Please wait a moment before trying again.' };
       }
-      if (error.message.includes('not allowed')) {
+      if (error.message.includes('not allowed') || error.message.includes('disabled')) {
         return { success: false, message: 'Email OTP is not enabled. Please contact support.' };
+      }
+      if (error.message.includes('invalid') && error.message.includes('email')) {
+        return { success: false, message: 'Invalid email address.' };
       }
       
       return { success: false, message: error.message };
