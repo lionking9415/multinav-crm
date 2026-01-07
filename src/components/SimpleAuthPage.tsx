@@ -60,12 +60,13 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
     if (isPasswordReset && userId) {
       console.log('[PasswordReset] Detected password reset redirect for user:', userId);
       
-      // Listen for auth state change (magic link verification)
+      // Listen for auth state change (password recovery event)
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('[PasswordReset] Auth state changed:', event);
         
-        if (event === 'SIGNED_IN' && session) {
-          console.log('[PasswordReset] User verified via magic link');
+        // PASSWORD_RECOVERY is triggered when user clicks reset password link
+        if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
+          console.log('[PasswordReset] User verified via reset password link');
           setShowResetPassword(true);
           setResetUserId(userId);
           
@@ -168,20 +169,11 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
         return;
       }
       
-      console.log('[ForgotPassword] User found, sending magic link to:', emailToReset);
+      console.log('[ForgotPassword] User found, sending reset password email to:', emailToReset);
       
-      // Use Supabase Auth magic link for password reset verification
-      const { error } = await supabase.auth.signInWithOtp({
-        email: emailToReset,
-        options: {
-          shouldCreateUser: true,
-          data: {
-            userId: existingUser.id,
-            userName: existingUser.full_name,
-            purpose: 'password_reset'
-          },
-          emailRedirectTo: `${window.location.origin}?reset_password=true&user_id=${existingUser.id}`
-        }
+      // Use Supabase Auth reset password email
+      const { error } = await supabase.auth.resetPasswordForEmail(emailToReset, {
+        redirectTo: `${window.location.origin}?reset_password=true&user_id=${existingUser.id}`
       });
       
       if (error) {
