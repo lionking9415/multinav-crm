@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Leaf, Mail, KeyRound, User, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
 import type { Client } from '../types';
 import { userService, clientService } from '../services/supabaseService';
@@ -40,24 +40,54 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [forgotError, setForgotError] = useState('');
+  const forgotEmailRef = useRef<HTMLInputElement>(null);
 
   // Handle forgot password
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
+    
+    // Get email from ref as fallback (handles browser autofill that doesn't trigger onChange)
+    const emailFromRef = forgotEmailRef.current?.value || '';
+    const emailToReset = (forgotEmail || emailFromRef).trim();
+    console.log('[ForgotPassword] Email from state:', forgotEmail);
+    console.log('[ForgotPassword] Email from ref:', emailFromRef);
+    console.log('[ForgotPassword] Email to reset:', emailToReset);
+    
+    // Update state if we got email from ref
+    if (!forgotEmail && emailFromRef) {
+      setForgotEmail(emailFromRef);
+    }
+    
+    if (!emailToReset) {
+      setForgotError('Please enter your email address');
+      return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailToReset)) {
+      setForgotError('Please enter a valid email address');
+      return;
+    }
+    
     setForgotLoading(true);
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      console.log('[ForgotPassword] Sending reset email to:', emailToReset);
+      const { error } = await supabase.auth.resetPasswordForEmail(emailToReset, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       
       if (error) {
+        console.error('[ForgotPassword] Error:', error);
         setForgotError(error.message);
       } else {
+        console.log('[ForgotPassword] Reset email sent successfully');
         setForgotSuccess(true);
       }
     } catch (err) {
+      console.error('[ForgotPassword] Exception:', err);
       setForgotError('Failed to send reset email. Please try again.');
     } finally {
       setForgotLoading(false);
@@ -297,10 +327,12 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                   <input
+                    ref={forgotEmailRef}
                     id="forgot-email"
                     type="email"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
+                    autoComplete="email"
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-baby-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter your email"
                     required
