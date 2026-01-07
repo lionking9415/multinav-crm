@@ -704,12 +704,6 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
               )}
             </button>
             
-            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-              Demo accounts:<br/>
-              Admin: admin@multinav.com / password123<br/>
-              Coordinator: coordinator@multinav.com / password123<br/>
-              Navigator: navigator@multinav.com / password123
-            </div>
           </form>
         ) : (
           /* Patient Login Form */
@@ -765,13 +759,8 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
               )}
             </button>
             
-            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4 space-y-2">
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
               <p>Use your Client ID and password provided by your healthcare navigator</p>
-              <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
-                <p className="font-medium text-gray-600 dark:text-gray-300">Demo accounts (if database is empty):</p>
-                <p>Client ID: C4F2A1 / Password: pass123</p>
-                <p>Client ID: C8B9D3 / Password: pass123</p>
-              </div>
             </div>
           </form>
         )}
