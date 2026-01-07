@@ -3,12 +3,13 @@ import Card from './Card';
 import { ExternalLink } from 'lucide-react';
 
 const lgas = [
-    { name: 'City of Wanneroo', url: 'https://atlas.id.com.au/wanneroo' },
-    { name: 'City of Swan', url: 'https://atlas.id.com.au/swan' },
-    { name: 'City of Stirling', url: 'https://atlas.id.com.au/stirling/maps/social-atlas?id=235&z=11&lat=-31.87&lng=115.80' },
-    { name: 'City of Canning', url: 'https://atlas.id.com.au/canning/maps/social-atlas?id=235&z=11&lat=-32.02&lng=115.93' },
-    { name: 'City of Gosnells', url: 'https://atlas.id.com.au/gosnells/maps/social-atlas?id=235&z=11&lat=-32.07&lng=115.98' },
-    { name: 'City of Mandurah', url: 'https://atlas.id.com.au/mandurah/maps/social-atlas?id=235&z=10&lat=-32.55&lng=115.75' },
+    { name: 'Greater Perth', url: 'https://atlas.id.com.au/perth/maps/social-atlas?id=235&z=10&lat=-31.95&lng=115.86' },
+    { name: 'Wanneroo', url: 'https://atlas.id.com.au/wanneroo' },
+    { name: 'Swan', url: 'https://atlas.id.com.au/swan' },
+    { name: 'Stirling', url: 'https://atlas.id.com.au/stirling/maps/social-atlas?id=235&z=11&lat=-31.87&lng=115.80' },
+    { name: 'Canning', url: 'https://atlas.id.com.au/canning/maps/social-atlas?id=235&z=11&lat=-32.02&lng=115.93' },
+    { name: 'Gosnells', url: 'https://atlas.id.com.au/gosnells/maps/social-atlas?id=235&z=11&lat=-32.07&lng=115.98' },
+    { name: 'Mandurah', url: 'https://atlas.id.com.au/mandurah/maps/social-atlas?id=235&z=10&lat=-32.55&lng=115.75' },
 ];
 
 const LocalDemographics: React.FC = () => {
