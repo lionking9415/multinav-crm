@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Leaf, Mail, KeyRound, User, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Leaf, Mail, KeyRound, User, Loader2, ArrowLeft, CheckCircle, Lock } from 'lucide-react';
 import type { Client } from '../types';
 import { userService, clientService } from '../services/supabaseService';
 import { isDeviceTrusted, initiate2FA, generateDeviceFingerprint } from '../services/twoFactorService';
@@ -41,6 +41,86 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [forgotError, setForgotError] = useState('');
   const forgotEmailRef = useRef<HTMLInputElement>(null);
+  
+  // Password reset state (after clicking magic link)
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetUserId, setResetUserId] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetError, setResetError] = useState('');
+  
+  // Check URL for password reset redirect
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPasswordReset = urlParams.get('reset_password') === 'true';
+    const userId = urlParams.get('user_id');
+    
+    if (isPasswordReset && userId) {
+      console.log('[PasswordReset] Detected password reset redirect for user:', userId);
+      
+      // Listen for auth state change (magic link verification)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[PasswordReset] Auth state changed:', event);
+        
+        if (event === 'SIGNED_IN' && session) {
+          console.log('[PasswordReset] User verified via magic link');
+          setShowResetPassword(true);
+          setResetUserId(userId);
+          
+          // Sign out from Supabase Auth (we only used it for verification)
+          await supabase.auth.signOut();
+          
+          // Clear URL params
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      });
+      
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, []);
+  
+  // Handle password reset submission
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    
+    if (newPassword.length < 8) {
+      setResetError('Password must be at least 8 characters');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setResetError('Passwords do not match');
+      return;
+    }
+    
+    setResetLoading(true);
+    
+    try {
+      // Update password in our custom users table
+      const { error } = await supabase
+        .from('users')
+        .update({ password_hash: newPassword })
+        .eq('id', resetUserId);
+      
+      if (error) {
+        console.error('[PasswordReset] Error updating password:', error);
+        setResetError('Failed to update password. Please try again.');
+      } else {
+        console.log('[PasswordReset] Password updated successfully');
+        setResetSuccess(true);
+      }
+    } catch (err) {
+      console.error('[PasswordReset] Exception:', err);
+      setResetError('Failed to update password. Please try again.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   // Handle forgot password
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -74,9 +154,34 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
     setForgotLoading(true);
     
     try {
-      console.log('[ForgotPassword] Sending reset email to:', emailToReset);
-      const { error } = await supabase.auth.resetPasswordForEmail(emailToReset, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // First check if user exists in our custom users table
+      const { data: existingUser, error: userError } = await supabase
+        .from('users')
+        .select('id, email, full_name')
+        .eq('email', emailToReset)
+        .single();
+      
+      if (userError || !existingUser) {
+        console.log('[ForgotPassword] User not found in database');
+        // Don't reveal if user exists or not for security
+        setForgotSuccess(true);
+        return;
+      }
+      
+      console.log('[ForgotPassword] User found, sending magic link to:', emailToReset);
+      
+      // Use Supabase Auth magic link for password reset verification
+      const { error } = await supabase.auth.signInWithOtp({
+        email: emailToReset,
+        options: {
+          shouldCreateUser: true,
+          data: {
+            userId: existingUser.id,
+            userName: existingUser.full_name,
+            purpose: 'password_reset'
+          },
+          emailRedirectTo: `${window.location.origin}?reset_password=true&user_id=${existingUser.id}`
+        }
       });
       
       if (error) {
@@ -270,6 +375,129 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
         onVerified={handle2FAVerified}
         onCancel={handle2FACancel}
       />
+    );
+  }
+
+  // Show password reset form (after clicking magic link)
+  if (showResetPassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-baby-blue-100 to-lime-green-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-lime-green-500 rounded-full">
+                <Lock className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Set New Password</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Enter your new password below
+            </p>
+          </div>
+
+          {resetSuccess ? (
+            <div className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <CheckCircle className="w-12 h-12 text-green-500" />
+                </div>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Password Updated!</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Your password has been successfully changed. You can now log in with your new password.
+              </p>
+              <button
+                onClick={() => {
+                  setShowResetPassword(false);
+                  setResetSuccess(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+                className="w-full py-3 px-4 bg-lime-green-500 hover:bg-lime-green-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all"
+              >
+                Go to Login
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              {resetError && (
+                <div className="p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm">
+                  {resetError}
+                </div>
+              )}
+              
+              <div>
+                <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  New Password
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter new password"
+                    required
+                    minLength={8}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+              </div>
+
+              <div>
+                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Confirm new password"
+                    required
+                    minLength={8}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full py-3 px-4 bg-lime-green-500 hover:bg-lime-green-600 disabled:bg-lime-green-300 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                {resetLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Password'
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetPassword(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setResetError('');
+                }}
+                className="w-full py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm flex items-center justify-center gap-2"
+              >
+                <ArrowLeft size={16} />
+                Cancel
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
     );
   }
 
