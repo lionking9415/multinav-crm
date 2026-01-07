@@ -59,7 +59,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers }) => {
     try {
       if (editingUser) {
         // Update existing user
-        const updates: Partial<User> = {
+        const updates: Partial<User> & { password?: string } = {
           fullName: formData.fullName,
           email: formData.email,
           role: formData.role,
@@ -68,8 +68,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers }) => {
           twoFactorEnabled: formData.twoFactorEnabled
         };
         
+        // Include password if provided (for password reset by admin)
+        if (formData.password && formData.password.length >= 8) {
+          updates.password = formData.password;
+        }
+        
         await userService.update(editingUser.id, updates);
-        setSuccess('User updated successfully');
+        setSuccess(formData.password ? 'User updated and password reset successfully' : 'User updated successfully');
       } else {
         // Create new user
         const newUser = {
@@ -244,27 +249,29 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers }) => {
                 </div>
               </div>
 
-              {/* Password (only for new users) */}
-              {!editingUser && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Temporary Password *
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600"
-                      placeholder="Minimum 8 characters"
-                      required={!editingUser}
-                      minLength={8}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">User will be prompted to change on first login</p>
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {editingUser ? 'New Password (leave blank to keep current)' : 'Temporary Password *'}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600"
+                    placeholder={editingUser ? 'Enter new password to change' : 'Minimum 8 characters'}
+                    required={!editingUser}
+                    minLength={formData.password ? 8 : 0}
+                  />
                 </div>
-              )}
+                <p className="text-xs text-gray-500 mt-1">
+                  {editingUser 
+                    ? 'Only fill this if you want to reset the user\'s password' 
+                    : 'User will be prompted to change on first login'}
+                </p>
+              </div>
 
               {/* Role */}
               <div>

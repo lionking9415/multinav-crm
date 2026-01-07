@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Leaf, Mail, KeyRound, User, Loader2 } from 'lucide-react';
+import { Leaf, Mail, KeyRound, User, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
 import type { Client } from '../types';
 import { userService, clientService } from '../services/supabaseService';
 import { isDeviceTrusted, initiate2FA, generateDeviceFingerprint } from '../services/twoFactorService';
+import { supabase } from '../services/supabaseService';
 import EmailVerification from './EmailVerification';
 
 interface SimpleAuthPageProps {
@@ -32,6 +33,44 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
   // 2FA state
   const [show2FA, setShow2FA] = useState(false);
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null);
+  
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+
+  // Handle forgot password
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) {
+        setForgotError(error.message);
+      } else {
+        setForgotSuccess(true);
+      }
+    } catch (err) {
+      setForgotError('Failed to send reset email. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // Reset forgot password state
+  const resetForgotPassword = () => {
+    setShowForgotPassword(false);
+    setForgotEmail('');
+    setForgotSuccess(false);
+    setForgotError('');
+  };
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,6 +243,101 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
     );
   }
 
+  // Show forgot password screen
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-baby-blue-100 to-lime-green-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-baby-blue-500 rounded-full">
+                <Mail className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Reset Password</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Enter your email to receive a password reset link
+            </p>
+          </div>
+
+          {forgotSuccess ? (
+            <div className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <CheckCircle className="w-12 h-12 text-green-500" />
+                </div>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Check Your Email</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                We've sent a password reset link to <strong>{forgotEmail}</strong>
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                Click the link in the email to reset your password. The link expires in 1 hour.
+              </p>
+              <button
+                onClick={resetForgotPassword}
+                className="w-full py-3 px-4 bg-lime-green-500 hover:bg-lime-green-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all"
+              >
+                Back to Login
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              {forgotError && (
+                <div className="p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm">
+                  {forgotError}
+                </div>
+              )}
+              
+              <div>
+                <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-baby-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={forgotLoading}
+                className="w-full py-3 px-4 bg-baby-blue-500 hover:bg-baby-blue-600 disabled:bg-baby-blue-300 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                {forgotLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Link'
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={resetForgotPassword}
+                className="w-full py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm flex items-center justify-center gap-2"
+              >
+                <ArrowLeft size={16} />
+                Back to Login
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-baby-blue-100 to-lime-green-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
@@ -288,6 +422,19 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
                   required
                 />
               </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(true);
+                  setForgotEmail(staffEmail);
+                }}
+                className="text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline"
+              >
+                Forgot Password?
+              </button>
             </div>
 
             <button

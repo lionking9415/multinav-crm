@@ -774,7 +774,7 @@ export const userService = {
     };
   },
 
-  async update(id: string, updates: Partial<User>): Promise<User> {
+  async update(id: string, updates: Partial<User> & { password?: string }): Promise<User> {
     const updateData: any = {};
     
     if (updates.email !== undefined) updateData.email = updates.email;
@@ -784,6 +784,12 @@ export const userService = {
     if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
     if (updates.twoFactorEnabled !== undefined) updateData.two_factor_enabled = updates.twoFactorEnabled;
     if (updates.phoneNumber !== undefined) updateData.phone_number = updates.phoneNumber;
+    
+    // Update password if provided (admin password reset)
+    if (updates.password && updates.password.trim() !== '') {
+      updateData.password_hash = updates.password;
+      console.log('[UserService] Updating password for user:', id);
+    }
 
     const { data, error } = await supabase
       .from('users')
