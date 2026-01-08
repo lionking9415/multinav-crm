@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Client, PatientData, ChatMessage, ExperienceEntry } from '../types';
 import { translateText } from '../services/geminiService';
-import { X, BookUser, MessageSquare, Languages, Inbox, Paperclip } from 'lucide-react';
+import { X, BookUser, MessageSquare, Languages, Inbox, Paperclip, Loader2 } from 'lucide-react';
 
 interface PatientSubmissionsViewerProps {
     isOpen: boolean;
@@ -120,7 +120,7 @@ const SubmissionsContent = ({ client, data }: { client: Client, data: PatientDat
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'experience': return <ExperienceView entries={data.experiences} />;
+            case 'experience': return <ExperienceView entries={data.experiences} clientLanguage={client.languages[0]} />;
             case 'messages': return <MessagesView messages={data.messages} client={client}/>;
             default: return null;
         }
@@ -143,66 +143,180 @@ const SubmissionsContent = ({ client, data }: { client: Client, data: PatientDat
     );
 };
 
-const ExperienceView: React.FC<{ entries: ExperienceEntry[] }> = ({ entries }) => (
-    <div className="space-y-4">
-        {entries.length > 0 ? [...entries].reverse().map(entry => (
-             <div key={entry.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-md border-l-4 border-baby-blue-300 dark:border-baby-blue-600">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleString()}</p>
-                <p className="text-gray-800 dark:text-gray-200 mt-1 whitespace-pre-wrap">{entry.content}</p>
-                {entry.attachments && entry.attachments.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Attachments:</h4>
-                        <ul className="space-y-1">
-                            {entry.attachments.map((file, index) => (
-                                <li key={index}>
-                                    <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
-                                        <Paperclip size={14} className="mr-1" /> {file.name}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </div>
-        )) : <p className="text-gray-500 dark:text-gray-400">No journal entries from this client.</p>}
-    </div>
-);
-
-const MessagesView: React.FC<{ messages: ChatMessage[], client: Client }> = ({ messages, client }) => {
-    const [isTranslating, setIsTranslating] = useState(false);
+const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: string }> = ({ entries, clientLanguage = 'English' }) => {
+    const [translations, setTranslations] = useState<Record<string, string>>({});
+    const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
     
-    const handleTranslate = async (text: string) => {
-        setIsTranslating(true);
-        try {
-            const translatedText = await translateText(text, "English");
-            alert(`Translation to English:\n\n${translatedText}`);
-        } catch (error) {
-             alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        } finally {
-            setIsTranslating(false);
-        }
-    };
+    const needsTranslation = clientLanguage !== 'English';
+
+    // Auto-translate journal entries to English
+    useEffect(() => {
+        if (!needsTranslation) return;
+        
+        const translateEntries = async () => {
+            const entriesToTranslate = entries.filter(
+                entry => !translations[entry.id] && !translatingIds.has(entry.id)
+            );
+            
+            for (const entry of entriesToTranslate) {
+                setTranslatingIds(prev => new Set(prev).add(entry.id));
+                try {
+                    console.log(`[StaffView] Auto-translating journal entry to English:`, entry.id);
+                    const translatedText = await translateText(entry.content, 'English');
+                    setTranslations(prev => ({ ...prev, [entry.id]: translatedText }));
+                } catch (error) {
+                    console.error('[StaffView] Failed to translate entry:', entry.id, error);
+                } finally {
+                    setTranslatingIds(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(entry.id);
+                        return newSet;
+                    });
+                }
+            }
+        };
+        
+        translateEntries();
+    }, [entries, needsTranslation, translations, translatingIds]);
 
     return (
         <div className="space-y-4">
-             {messages.map(msg => (
-                <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === 'patient' ? '' : 'flex-row-reverse'}`}>
-                    <div className={`p-3 rounded-lg max-w-lg ${msg.sender === 'patient' ? 'bg-baby-blue-100 dark:bg-baby-blue-900/50' : 'bg-lime-green-100 dark:bg-lime-green-900/50'}`}>
-                        <p className="text-gray-800 dark:text-gray-100">{msg.text}</p>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex justify-between items-center">
-                            <span>{new Date(msg.timestamp).toLocaleString()}</span>
-                            {msg.sender === 'patient' && msg.language !== 'English' && (
-                                <button onClick={() => handleTranslate(msg.text)} disabled={isTranslating} className="ml-3 inline-flex items-center text-baby-blue-600 dark:text-baby-blue-400 hover:underline disabled:opacity-50">
-                                    <Languages size={14} className="mr-1"/> Translate
-                                </button>
+            {entries.length > 0 ? [...entries].reverse().map(entry => {
+                const hasTranslation = translations[entry.id];
+                const isTranslatingThis = translatingIds.has(entry.id);
+                
+                return (
+                    <div key={entry.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-md border-l-4 border-baby-blue-300 dark:border-baby-blue-600">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleString()}</p>
+                        
+                        {/* Original content */}
+                        <p className="text-gray-800 dark:text-gray-200 mt-1 whitespace-pre-wrap">{entry.content}</p>
+                        
+                        {/* Auto-translated English version */}
+                        {needsTranslation && (
+                            isTranslatingThis ? (
+                                <div className="mt-2 p-2 rounded bg-lime-green-50 dark:bg-lime-green-900/30 text-xs flex items-center gap-2 text-lime-green-700 dark:text-lime-green-300">
+                                    <Loader2 size={12} className="animate-spin" />
+                                    <span>Translating to English...</span>
+                                </div>
+                            ) : hasTranslation && (
+                                <div className="mt-2 p-2 rounded bg-lime-green-50 dark:bg-lime-green-900/30 text-sm">
+                                    <span className="text-lime-green-700 dark:text-lime-green-300 flex items-center gap-1 mb-1 font-semibold text-xs">
+                                        <Languages size={10} />
+                                        English:
+                                    </span>
+                                    <p className="text-lime-green-800 dark:text-lime-green-200">{hasTranslation}</p>
+                                </div>
+                            )
+                        )}
+                        
+                        {entry.attachments && entry.attachments.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Attachments:</h4>
+                                <ul className="space-y-1">
+                                    {entry.attachments.map((file, index) => (
+                                        <li key={index}>
+                                            <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
+                                                <Paperclip size={14} className="mr-1" /> {file.name}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                );
+            }) : <p className="text-gray-500 dark:text-gray-400">No journal entries from this client.</p>}
+        </div>
+    );
+};
+
+const MessagesView: React.FC<{ messages: ChatMessage[], client: Client }> = ({ messages, client }) => {
+    const [translations, setTranslations] = useState<Record<string, string>>({});
+    const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
+    
+    const patientLanguage = client.languages[0] || 'English';
+    const needsTranslation = patientLanguage !== 'English';
+
+    // Auto-translate patient messages to English
+    useEffect(() => {
+        if (!needsTranslation) return;
+        
+        const translatePatientMessages = async () => {
+            const patientMessages = messages.filter(
+                msg => msg.sender === 'patient' && !translations[msg.id] && !translatingIds.has(msg.id)
+            );
+            
+            for (const msg of patientMessages) {
+                setTranslatingIds(prev => new Set(prev).add(msg.id));
+                try {
+                    console.log(`[StaffView] Auto-translating patient message to English:`, msg.id);
+                    const translatedText = await translateText(msg.text, 'English');
+                    setTranslations(prev => ({ ...prev, [msg.id]: translatedText }));
+                } catch (error) {
+                    console.error('[StaffView] Failed to translate message:', msg.id, error);
+                } finally {
+                    setTranslatingIds(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(msg.id);
+                        return newSet;
+                    });
+                }
+            }
+        };
+        
+        translatePatientMessages();
+    }, [messages, needsTranslation, translations, translatingIds]);
+
+    return (
+        <div className="space-y-4">
+             {messages.map(msg => {
+                const isPatientMessage = msg.sender === 'patient';
+                const hasTranslation = translations[msg.id];
+                const isTranslatingThis = translatingIds.has(msg.id);
+                const showTranslation = isPatientMessage && needsTranslation;
+                
+                return (
+                    <div key={msg.id} className={`flex items-start gap-3 ${isPatientMessage ? '' : 'flex-row-reverse'}`}>
+                        <div className="max-w-lg space-y-1">
+                            {/* Original message */}
+                            <div className={`p-3 rounded-lg ${isPatientMessage ? 'bg-baby-blue-100 dark:bg-baby-blue-900/50' : 'bg-lime-green-100 dark:bg-lime-green-900/50'}`}>
+                                <p className="text-gray-800 dark:text-gray-100">{msg.text}</p>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex justify-between items-center">
+                                    <span>{new Date(msg.timestamp).toLocaleString()}</span>
+                                    {showTranslation && !hasTranslation && !isTranslatingThis && (
+                                        <span className="ml-2 text-baby-blue-600 dark:text-baby-blue-400 flex items-center gap-1">
+                                            <Languages size={12} />
+                                            <span>Original ({patientLanguage})</span>
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* Auto-translated English version for patient messages */}
+                            {showTranslation && (
+                                isTranslatingThis ? (
+                                    <div className="p-2 rounded bg-lime-green-50 dark:bg-lime-green-900/30 text-xs flex items-center gap-2 text-lime-green-700 dark:text-lime-green-300">
+                                        <Loader2 size={12} className="animate-spin" />
+                                        <span>Translating to English...</span>
+                                    </div>
+                                ) : hasTranslation && (
+                                    <div className="p-2 rounded bg-lime-green-50 dark:bg-lime-green-900/30 text-xs">
+                                        <span className="text-lime-green-700 dark:text-lime-green-300 flex items-center gap-1 mb-1 font-semibold">
+                                            <Languages size={10} />
+                                            English:
+                                        </span>
+                                        <p className="text-lime-green-800 dark:text-lime-green-200">{hasTranslation}</p>
+                                    </div>
+                                )
                             )}
                         </div>
+                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center font-bold text-gray-600 dark:text-gray-200 text-sm flex-shrink-0" title={isPatientMessage ? client.fullName : 'Navigator'}>
+                            {isPatientMessage ? client.fullName.charAt(0) : 'N'}
+                        </div>
                     </div>
-                     <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center font-bold text-gray-600 dark:text-gray-200 text-sm flex-shrink-0" title={msg.sender === 'patient' ? client.fullName : 'Navigator'}>
-                        {msg.sender === 'patient' ? client.fullName.charAt(0) : 'N'}
-                    </div>
-                </div>
-            ))}
+                );
+            })}
             {messages.length === 0 && <p className="text-gray-500 dark:text-gray-400">No messages exchanged with this client.</p>}
         </div>
     );
