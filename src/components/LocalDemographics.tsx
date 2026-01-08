@@ -2,7 +2,7 @@ import React from 'react';
 import Card from './Card';
 import { ExternalLink } from 'lucide-react';
 
-const PERTH_ATLAS_URL = 'https://atlas.id.com.au/perth/maps/social-atlas?id=235&z=10&lat=-31.95&lng=115.86';
+const PERTH_ATLAS_URL = 'https://atlas.id.com.au/wapl';
 
 const LocalDemographics: React.FC = () => {
     return (
