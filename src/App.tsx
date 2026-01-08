@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import type { Client, HealthActivity, WorkforceData, ProgramResource, GpPractice, PatientData } from './types';
+import type { Client, HealthActivity, WorkforceData, ProgramResource, GpPractice, PatientData, ChatMessage } from './types';
 import { clientService, activityService, workforceService, resourceService, gpPracticeService, patientDataService } from './services/supabaseService';
 import ClientDemographics from './components/ClientDemographics';
 import HealthNavigationActivities from './components/HealthNavigationActivities';
@@ -303,6 +303,39 @@ const App: React.FC = () => {
     });
   };
 
+  const handleSendMessage = async (clientId: string, message: ChatMessage) => {
+    try {
+      // Save to database
+      await patientDataService.createMessage(clientId, message);
+      console.log('[App] Staff message saved to database:', message.id);
+      
+      // Update local state
+      setPatientData(prev => {
+        const clientData = prev[clientId];
+        if (!clientData) {
+          return {
+            ...prev,
+            [clientId]: {
+              experiences: [],
+              messages: [message]
+            }
+          };
+        }
+        
+        return {
+          ...prev,
+          [clientId]: {
+            ...clientData,
+            messages: [...clientData.messages, message]
+          }
+        };
+      });
+    } catch (error) {
+      console.error('[App] Failed to save staff message:', error);
+      throw error;
+    }
+  };
+
   const handleStaffLogin = (userRole?: 'admin' | 'coordinator' | 'navigator', userEmail?: string) => {
     // Determine role from email if not provided
     let actualRole = userRole;
@@ -572,6 +605,7 @@ const App: React.FC = () => {
                 clients={clients}
                 patientData={patientData}
                 onMarkAsRead={handleMarkAsRead}
+                onSendMessage={handleSendMessage}
             />
         )}
     </div>
