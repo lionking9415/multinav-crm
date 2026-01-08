@@ -279,15 +279,51 @@ const ExperienceJournal = ({ experiences, setExperiences, clientId, patientLangu
 
 const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMessage[], setMessages: (m: ChatMessage[]) => void, client: Client }) => {
     const [newMessage, setNewMessage] = useState('');
-    const [translatingId, setTranslatingId] = useState<string | null>(null);
+    const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
     const [translations, setTranslations] = useState<Record<string, string>>({});
     const [isSending, setIsSending] = useState(false);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
     const patientLanguage = client.languages[0] || 'English';
+    const needsAutoTranslate = patientLanguage !== 'English';
 
     useEffect(() => {
         endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // Auto-translate all messages:
+    // - Navigator messages: English → Patient's language
+    // - Patient messages: Patient's language → English (so patient can see what staff sees)
+    useEffect(() => {
+        if (!needsAutoTranslate) return;
+        
+        const translateAllMessages = async () => {
+            const messagesToTranslate = messages.filter(
+                msg => !translations[msg.id] && !translatingIds.has(msg.id)
+            );
+            
+            for (const msg of messagesToTranslate) {
+                setTranslatingIds(prev => new Set(prev).add(msg.id));
+                try {
+                    // Navigator messages: translate to patient's language
+                    // Patient messages: translate to English (what staff sees)
+                    const targetLang = msg.sender === 'navigator' ? patientLanguage : 'English';
+                    console.log(`[AutoTranslate] Translating ${msg.sender} message to ${targetLang}:`, msg.id);
+                    const translatedText = await translateText(msg.text, targetLang);
+                    setTranslations(prev => ({ ...prev, [msg.id]: translatedText }));
+                } catch (error) {
+                    console.error('[AutoTranslate] Failed to translate message:', msg.id, error);
+                } finally {
+                    setTranslatingIds(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(msg.id);
+                        return newSet;
+                    });
+                }
+            }
+        };
+        
+        translateAllMessages();
+    }, [messages, patientLanguage, needsAutoTranslate, translations, translatingIds]);
 
     const handleSend = async () => {
         if (!newMessage.trim() || isSending) return;
@@ -321,74 +357,90 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
         }
     };
 
-    const handleTranslate = async (msgId: string, text: string, targetLang: string) => {
-        if (!text || translations[msgId]) return;
-        setTranslatingId(msgId);
-        try {
-            const translatedText = await translateText(text, targetLang);
-            setTranslations(prev => ({ ...prev, [msgId]: translatedText }));
-        } catch (error) {
-            console.error('Translation failed:', error);
-            alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        } finally {
-            setTranslatingId(null);
-        }
-    };
-
-    // Determine if a message needs translation
-    const needsTranslation = (msg: ChatMessage) => {
-        // Navigator messages in English need translation to patient's language
-        if (msg.sender === 'navigator' && patientLanguage !== 'English') {
-            return { needs: true, targetLang: patientLanguage, label: `Translate to ${patientLanguage}` };
-        }
-        // Patient's own messages in non-English need translation to English (to see what staff sees)
-        if (msg.sender === 'patient' && patientLanguage !== 'English') {
-            return { needs: true, targetLang: 'English', label: 'See English translation' };
-        }
-        return { needs: false, targetLang: '', label: '' };
-    };
-
     return (
         <div>
             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Secure Messages</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                 <Languages size={14} className="inline mr-1" />
-                Write in {patientLanguage} - your messages will be translated for staff automatically.
+                {needsAutoTranslate ? (
+                    <>Write in {patientLanguage} - your messages will be translated for staff. Staff replies are automatically translated to {patientLanguage} for you.</>
+                ) : (
+                    <>Send secure messages to your healthcare navigator.</>
+                )}
             </p>
             <div className="h-80 border rounded-md p-4 space-y-4 overflow-y-auto flex flex-col bg-gray-50 dark:bg-gray-700/50">
                 {messages.length > 0 ? messages.map(msg => {
-                    const translationInfo = needsTranslation(msg);
                     const hasTranslation = translations[msg.id];
-                    const isTranslatingThis = translatingId === msg.id;
+                    const isTranslatingThis = translatingIds.has(msg.id);
+                    const isNavigatorMessage = msg.sender === 'navigator';
+                    const isPatientMessage = msg.sender === 'patient';
+                    
+                    // Patient can manually translate their own messages to see English version
+                    const canManuallyTranslate = isPatientMessage && needsAutoTranslate && !hasTranslation;
                     
                     return (
-                        <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'patient' ? 'justify-end' : 'justify-start'}`}>
-                            {msg.sender === 'navigator' && <div className="w-8 h-8 rounded-full bg-lime-green-200 flex items-center justify-center font-bold text-lime-green-700 text-sm">N</div>}
-                            <div className={`max-w-xs ${msg.sender === 'patient' ? '' : ''}`}>
-                                <div className={`p-3 rounded-lg ${msg.sender === 'patient' ? 'bg-baby-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100'}`}>
-                                    <p>{msg.text}</p>
-                                    <div className="text-xs opacity-70 mt-1 flex items-center justify-between">
-                                        <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                        {translationInfo.needs && !hasTranslation && (
-                                            <button 
-                                                onClick={() => handleTranslate(msg.id, msg.text, translationInfo.targetLang)} 
-                                                disabled={isTranslatingThis} 
-                                                className="ml-2 p-1 rounded-full hover:bg-black/10 disabled:opacity-50 flex items-center gap-1"
-                                                title={translationInfo.label}
-                                            >
-                                                {isTranslatingThis ? <Loader2 size={14} className="animate-spin" /> : <Languages size={14} />}
-                                            </button>
+                        <div key={msg.id} className={`flex items-end gap-2 ${isPatientMessage ? 'justify-end' : 'justify-start'}`}>
+                            {isNavigatorMessage && <div className="w-8 h-8 rounded-full bg-lime-green-200 flex items-center justify-center font-bold text-lime-green-700 text-sm">N</div>}
+                            <div className="max-w-xs">
+                                {/* Navigator message: show English on top, patient's language translation below */}
+                                {isNavigatorMessage && needsAutoTranslate ? (
+                                    <div className="space-y-1">
+                                        {/* Original English message (on top) */}
+                                        <div className="p-3 rounded-lg bg-lime-green-500 text-white">
+                                            <p>{msg.text}</p>
+                                            <div className="text-xs opacity-70 mt-1">
+                                                <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        </div>
+                                        {/* Translation to patient's language (below) */}
+                                        {isTranslatingThis ? (
+                                            <div className="p-2 rounded bg-lime-green-100 dark:bg-lime-green-900/50 text-xs flex items-center gap-2 text-lime-green-700 dark:text-lime-green-300">
+                                                <Loader2 size={12} className="animate-spin" />
+                                                <span>Translating to {patientLanguage}...</span>
+                                            </div>
+                                        ) : hasTranslation && (
+                                            <div className="p-2 rounded bg-lime-green-100 dark:bg-lime-green-900/50 text-xs">
+                                                <span className="text-lime-green-700 dark:text-lime-green-300 flex items-center gap-1 mb-1 font-semibold">
+                                                    <Languages size={10} />
+                                                    {patientLanguage}:
+                                                </span>
+                                                <p className="text-lime-green-800 dark:text-lime-green-200 italic">{hasTranslation}</p>
+                                            </div>
                                         )}
                                     </div>
-                                </div>
-                                {/* Show translation inline below the message */}
-                                {hasTranslation && (
-                                    <div className={`mt-1 p-2 rounded text-xs ${msg.sender === 'patient' ? 'bg-baby-blue-100 dark:bg-baby-blue-900/50 text-baby-blue-800 dark:text-baby-blue-200' : 'bg-lime-green-100 dark:bg-lime-green-900/50 text-lime-green-800 dark:text-lime-green-200'}`}>
-                                        <span className="font-semibold flex items-center gap-1 mb-1">
-                                            <Languages size={12} />
-                                            {msg.sender === 'patient' ? 'English (what staff sees):' : `${patientLanguage}:`}
-                                        </span>
-                                        <p>{translations[msg.id]}</p>
+                                ) : isPatientMessage && needsAutoTranslate ? (
+                                    /* Patient message with auto-translation to English */
+                                    <div className="space-y-1">
+                                        {/* Original message in patient's language (prominent) */}
+                                        <div className="p-3 rounded-lg bg-baby-blue-500 text-white">
+                                            <p>{msg.text}</p>
+                                            <div className="text-xs opacity-70 mt-1">
+                                                <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        </div>
+                                        {/* English translation (what staff sees) - auto displayed below */}
+                                        {isTranslatingThis ? (
+                                            <div className="p-2 rounded bg-baby-blue-100 dark:bg-baby-blue-900/50 text-xs flex items-center gap-2 text-baby-blue-700 dark:text-baby-blue-300">
+                                                <Loader2 size={12} className="animate-spin" />
+                                                <span>Translating to English...</span>
+                                            </div>
+                                        ) : hasTranslation && (
+                                            <div className="p-2 rounded text-xs bg-baby-blue-100 dark:bg-baby-blue-900/50 text-baby-blue-800 dark:text-baby-blue-200">
+                                                <span className="font-semibold flex items-center gap-1 mb-1">
+                                                    <Languages size={10} />
+                                                    English (what staff sees):
+                                                </span>
+                                                <p className="italic">{hasTranslation}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    /* English-speaking patient or navigator message without translation needed */
+                                    <div className={`p-3 rounded-lg ${isPatientMessage ? 'bg-baby-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100'}`}>
+                                        <p>{msg.text}</p>
+                                        <div className="text-xs opacity-70 mt-1">
+                                            <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -405,7 +457,7 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
                     onKeyPress={(e) => e.key === 'Enter' && !isSending && handleSend()}
                     disabled={isSending}
                     className="flex-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-lime-green-500 focus:border-lime-green-500 disabled:opacity-50"
-                    placeholder={`Type your message in ${patientLanguage}...`}
+                    placeholder={`Type your message${needsAutoTranslate ? ` in ${patientLanguage}` : ''}...`}
                 />
                 <button 
                     onClick={handleSend} 
