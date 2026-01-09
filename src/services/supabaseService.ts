@@ -45,7 +45,7 @@ export const clientService = {
       address: client.address,
       postcode: client.postcode,
       region: client.region,
-      password: '' // Don't return password hash
+      password: client.password_hash || '' // Return password for staff editing
     }));
   },
 
