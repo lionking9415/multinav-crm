@@ -283,6 +283,7 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
     const [translations, setTranslations] = useState<Record<string, string>>({});
     const [isSending, setIsSending] = useState(false);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
+    const processedIdsRef = useRef<Set<string>>(new Set()); // Track already processed messages
     const patientLanguage = client.languages[0] || 'English';
     const needsAutoTranslate = patientLanguage !== 'English';
 
@@ -297,12 +298,18 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
         if (!needsAutoTranslate) return;
         
         const translateAllMessages = async () => {
+            // Filter messages that haven't been processed yet
             const messagesToTranslate = messages.filter(
-                msg => !translations[msg.id] && !translatingIds.has(msg.id)
+                msg => !processedIdsRef.current.has(msg.id)
             );
             
+            if (messagesToTranslate.length === 0) return;
+            
             for (const msg of messagesToTranslate) {
+                // Mark as processed immediately to prevent duplicate calls
+                processedIdsRef.current.add(msg.id);
                 setTranslatingIds(prev => new Set(prev).add(msg.id));
+                
                 try {
                     // Navigator messages: translate to patient's language
                     // Patient messages: translate to English (what staff sees)
@@ -312,6 +319,8 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
                     setTranslations(prev => ({ ...prev, [msg.id]: translatedText }));
                 } catch (error) {
                     console.error('[AutoTranslate] Failed to translate message:', msg.id, error);
+                    // Remove from processed so it can be retried
+                    processedIdsRef.current.delete(msg.id);
                 } finally {
                     setTranslatingIds(prev => {
                         const newSet = new Set(prev);
@@ -323,7 +332,7 @@ const CommunicationHub = ({ messages, setMessages, client }: { messages: ChatMes
         };
         
         translateAllMessages();
-    }, [messages, patientLanguage, needsAutoTranslate, translations, translatingIds]);
+    }, [messages, patientLanguage, needsAutoTranslate]); // Removed translations and translatingIds from deps
 
     const handleSend = async () => {
         if (!newMessage.trim() || isSending) return;

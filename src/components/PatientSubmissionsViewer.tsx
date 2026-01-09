@@ -147,6 +147,7 @@ const SubmissionsContent = ({ client, data, onSendMessage }: { client: Client, d
 const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: string }> = ({ entries, clientLanguage = 'English' }) => {
     const [translations, setTranslations] = useState<Record<string, string>>({});
     const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
+    const processedIdsRef = useRef<Set<string>>(new Set()); // Track already processed entries
     
     const needsTranslation = clientLanguage !== 'English';
 
@@ -155,18 +156,26 @@ const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: st
         if (!needsTranslation) return;
         
         const translateEntries = async () => {
+            // Filter entries that haven't been processed yet
             const entriesToTranslate = entries.filter(
-                entry => !translations[entry.id] && !translatingIds.has(entry.id)
+                entry => !processedIdsRef.current.has(entry.id)
             );
             
+            if (entriesToTranslate.length === 0) return;
+            
             for (const entry of entriesToTranslate) {
+                // Mark as processed immediately to prevent duplicate calls
+                processedIdsRef.current.add(entry.id);
                 setTranslatingIds(prev => new Set(prev).add(entry.id));
+                
                 try {
                     console.log(`[StaffView] Auto-translating journal entry to English:`, entry.id);
                     const translatedText = await translateText(entry.content, 'English');
                     setTranslations(prev => ({ ...prev, [entry.id]: translatedText }));
                 } catch (error) {
                     console.error('[StaffView] Failed to translate entry:', entry.id, error);
+                    // Remove from processed so it can be retried
+                    processedIdsRef.current.delete(entry.id);
                 } finally {
                     setTranslatingIds(prev => {
                         const newSet = new Set(prev);
@@ -178,7 +187,7 @@ const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: st
         };
         
         translateEntries();
-    }, [entries, needsTranslation, translations, translatingIds]);
+    }, [entries, needsTranslation]); // Removed translations and translatingIds from deps
 
     return (
         <div className="space-y-4">
@@ -238,6 +247,7 @@ const MessagesView: React.FC<{ messages: ChatMessage[], client: Client, onSendMe
     const [replyText, setReplyText] = useState('');
     const [isSending, setIsSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const processedIdsRef = useRef<Set<string>>(new Set()); // Track already processed messages
     
     const patientLanguage = client.languages[0] || 'English';
     const needsTranslation = patientLanguage !== 'English';
@@ -252,18 +262,26 @@ const MessagesView: React.FC<{ messages: ChatMessage[], client: Client, onSendMe
         if (!needsTranslation) return;
         
         const translatePatientMessages = async () => {
+            // Filter messages that haven't been processed yet
             const patientMessages = messages.filter(
-                msg => msg.sender === 'patient' && !translations[msg.id] && !translatingIds.has(msg.id)
+                msg => msg.sender === 'patient' && !processedIdsRef.current.has(msg.id)
             );
             
+            if (patientMessages.length === 0) return;
+            
             for (const msg of patientMessages) {
+                // Mark as processed immediately to prevent duplicate calls
+                processedIdsRef.current.add(msg.id);
                 setTranslatingIds(prev => new Set(prev).add(msg.id));
+                
                 try {
                     console.log(`[StaffView] Auto-translating patient message to English:`, msg.id);
                     const translatedText = await translateText(msg.text, 'English');
                     setTranslations(prev => ({ ...prev, [msg.id]: translatedText }));
                 } catch (error) {
                     console.error('[StaffView] Failed to translate message:', msg.id, error);
+                    // Remove from processed so it can be retried
+                    processedIdsRef.current.delete(msg.id);
                 } finally {
                     setTranslatingIds(prev => {
                         const newSet = new Set(prev);
@@ -275,7 +293,7 @@ const MessagesView: React.FC<{ messages: ChatMessage[], client: Client, onSendMe
         };
         
         translatePatientMessages();
-    }, [messages, needsTranslation, translations, translatingIds]);
+    }, [messages, needsTranslation]); // Removed translations and translatingIds from deps
 
     const handleSendReply = async () => {
         if (!replyText.trim() || isSending) return;
