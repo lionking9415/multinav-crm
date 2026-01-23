@@ -109,3 +109,43 @@ export interface PatientData {
   experiences: ExperienceEntry[];
   messages: ChatMessage[];
 }
+
+export interface CommunityEngagement {
+  id: string;
+  dateOfMeeting: string;
+  agencyName: string;
+  staffPresent: string;
+  meetingNotes: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdByRole?: 'admin' | 'coordinator' | 'navigator';
+  createdAt?: string;
+}
+
+export type UserRole = 'admin' | 'coordinator' | 'navigator';
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  assignedLocations: string[];
+  isActive: boolean;
+  createdAt: string;
+  lastLogin?: string;
+  twoFactorEnabled?: boolean;
+  phoneNumber?: string;
+}
+
+export interface UserActivity {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  action: string;
+  details?: string;
+  location?: string;
+  timestamp: string;
+  ipAddress?: string;
+  userAgent?: string;
+}

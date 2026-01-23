@@ -11,7 +11,8 @@ import type {
   Workforce,
   User,
   UserRole,
-  UserActivity
+  UserActivity,
+  CommunityEngagement
 } from '../types';
 
 // Initialize Supabase client
@@ -879,6 +880,90 @@ export const activityLogService = {
       ipAddress: log.ip_address,
       userAgent: log.user_agent
     }));
+  }
+};
+
+// Community Engagement Functions
+export const communityEngagementService = {
+  async getAll(): Promise<CommunityEngagement[]> {
+    const { data, error } = await supabase
+      .from('community_engagements')
+      .select('*')
+      .order('date_of_meeting', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map(engagement => ({
+      id: engagement.id,
+      dateOfMeeting: engagement.date_of_meeting,
+      agencyName: engagement.agency_name,
+      staffPresent: engagement.staff_present,
+      meetingNotes: engagement.meeting_notes,
+      createdBy: engagement.created_by,
+      createdByName: engagement.created_by_name,
+      createdByRole: engagement.created_by_role,
+      createdAt: engagement.created_at
+    }));
+  },
+
+  async create(engagement: CommunityEngagement): Promise<CommunityEngagement> {
+    const { data, error } = await supabase
+      .from('community_engagements')
+      .insert({
+        id: engagement.id,
+        date_of_meeting: engagement.dateOfMeeting,
+        agency_name: engagement.agencyName,
+        staff_present: engagement.staffPresent,
+        meeting_notes: engagement.meetingNotes,
+        created_by: engagement.createdBy,
+        created_by_name: engagement.createdByName,
+        created_by_role: engagement.createdByRole
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return engagement;
+  },
+
+  async update(id: string, engagement: Partial<CommunityEngagement>): Promise<CommunityEngagement> {
+    const updateData: any = {};
+    
+    if (engagement.dateOfMeeting !== undefined) updateData.date_of_meeting = engagement.dateOfMeeting;
+    if (engagement.agencyName !== undefined) updateData.agency_name = engagement.agencyName;
+    if (engagement.staffPresent !== undefined) updateData.staff_present = engagement.staffPresent;
+    if (engagement.meetingNotes !== undefined) updateData.meeting_notes = engagement.meetingNotes;
+    
+    const { data, error } = await supabase
+      .from('community_engagements')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return {
+      id: data.id,
+      dateOfMeeting: data.date_of_meeting,
+      agencyName: data.agency_name,
+      staffPresent: data.staff_present,
+      meetingNotes: data.meeting_notes,
+      createdBy: data.created_by,
+      createdByName: data.created_by_name,
+      createdByRole: data.created_by_role,
+      createdAt: data.created_at
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('community_engagements')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 };
 

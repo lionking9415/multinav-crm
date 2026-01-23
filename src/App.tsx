@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import type { Client, HealthActivity, WorkforceData, ProgramResource, GpPractice, PatientData, ChatMessage } from './types';
-import { clientService, activityService, workforceService, resourceService, gpPracticeService, patientDataService } from './services/supabaseService';
+import type { Client, HealthActivity, WorkforceData, ProgramResource, GpPractice, PatientData, ChatMessage, CommunityEngagement } from './types';
+import { clientService, activityService, workforceService, resourceService, gpPracticeService, patientDataService, communityEngagementService } from './services/supabaseService';
 import ClientDemographics from './components/ClientDemographics';
 import HealthNavigationActivities from './components/HealthNavigationActivities';
 import WorkforceTracking from './components/WorkforceTracking';
@@ -16,9 +16,10 @@ import ProgramReporting from './components/ProgramReporting';
 import UnifiedReporting from './components/UnifiedReporting';
 import UserManagement from './components/UserManagement';
 import StaffPerformance from './components/StaffPerformance';
+import CommunityEngagementRegister from './components/CommunityEngagementRegister';
 import { userService } from './services/supabaseService';
 import type { User } from './types';
-import { Leaf, Users, HeartPulse, FolderKanban, BotMessageSquare, Sun, Moon, Menu, LayoutDashboard, Briefcase, LogOut, Stethoscope, Map, FilePieChart, FileBarChart, UserCog, BarChart3 } from 'lucide-react';
+import { Leaf, Users, HeartPulse, FolderKanban, BotMessageSquare, Sun, Moon, Menu, LayoutDashboard, Briefcase, LogOut, Stethoscope, Map, FilePieChart, FileBarChart, UserCog, BarChart3, Handshake } from 'lucide-react';
 
 const App: React.FC = () => {
   // Staff-side data
@@ -28,6 +29,7 @@ const App: React.FC = () => {
   const [resources, setResources] = useState<ProgramResource[]>([]);
   const [gpPractices, setGpPractices] = useState<GpPractice[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [communityEngagements, setCommunityEngagements] = useState<CommunityEngagement[]>([]);
   
   // Patient-side data, keyed by client ID
   const [patientData, setPatientData] = useState<Record<string, PatientData>>({});
@@ -66,13 +68,14 @@ const App: React.FC = () => {
       
       try {
         // Try to load from database first
-        const [dbClients, dbActivities, dbWorkforce, dbResources, dbGpPractices, dbUsers] = await Promise.all([
+        const [dbClients, dbActivities, dbWorkforce, dbResources, dbGpPractices, dbUsers, dbEngagements] = await Promise.all([
           clientService.getAll(),
           activityService.getAll(),
           workforceService.getAll(),
           resourceService.getAll(),
           gpPracticeService.getAll(),
-          userService.getAll()
+          userService.getAll(),
+          communityEngagementService.getAll().catch(() => []) // Gracefully handle if table doesn't exist yet
         ]);
 
         if (dbClients.length > 0) {
@@ -269,6 +272,11 @@ const App: React.FC = () => {
           ];
           setUsers(mockUsers);
         }
+
+        // Load community engagements
+        if (dbEngagements && dbEngagements.length > 0) {
+          setCommunityEngagements(dbEngagements);
+        }
         
         isInitialDataLoaded.current = true;
       } catch (error) {
@@ -391,6 +399,7 @@ const App: React.FC = () => {
     { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard /> },
     { key: 'demographics', label: 'Client Management', icon: <Users /> },
     { key: 'activities', label: 'Health Navigation', icon: <HeartPulse /> },
+    { key: 'communityEngagement', label: 'Community Engagement', icon: <Handshake /> },
     { key: 'workforce', label: 'Workforce Tracking', icon: <Briefcase /> },
     { key: 'unifiedReporting', label: 'Unified Reporting', icon: <FileBarChart /> },
     { key: 'reporting', label: 'Program Reporting', icon: <FilePieChart /> },
@@ -409,7 +418,7 @@ const App: React.FC = () => {
     const userRole = session.userRole || 'navigator';
     
     // Define which items each role can access
-    const navigatorItems = ['demographics', 'activities', 'localDemographics', 'gpEngagement', 'resources'];
+    const navigatorItems = ['demographics', 'activities', 'communityEngagement', 'localDemographics', 'gpEngagement', 'resources'];
     const coordinatorItems = [...navigatorItems, 'dashboard', 'reporting', 'workforce', 'insights'];
     const adminItems = allNavItems.map(item => item.key); // Admin gets everything
     
@@ -447,6 +456,16 @@ const App: React.FC = () => {
                         email: session?.userEmail || '',
                         role: session?.userRole || 'navigator',
                         // Use the full name from users list if available, otherwise use email prefix
+                        name: users.find(u => u.email === session?.userEmail)?.fullName || session?.userEmail?.split('@')[0] || 'Unknown'
+                    }}
+                />;
+      case 'communityEngagement':
+        return <CommunityEngagementRegister 
+                    engagements={communityEngagements} 
+                    setEngagements={setCommunityEngagements}
+                    currentUser={{
+                        email: session?.userEmail || '',
+                        role: session?.userRole || 'navigator',
                         name: users.find(u => u.email === session?.userEmail)?.fullName || session?.userEmail?.split('@')[0] || 'Unknown'
                     }}
                 />;
