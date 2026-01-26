@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Client, HealthActivity, WorkforceData } from '../types';
 import Card from './Card';
-import { Zap, Calendar, FileDown, AlertTriangle, Bot, Lightbulb } from 'lucide-react';
+import { Zap, Calendar, FileDown, AlertTriangle, Bot, Lightbulb, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { generateReportInsights } from '../services/geminiService';
@@ -44,12 +44,48 @@ const ProgramReporting: React.FC<{
   workforce: WorkforceData;
 }> = ({ clients, activities, workforce }) => {
   const today = new Date().toISOString().split('T')[0];
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-  const threeMonthsAgoStr = threeMonthsAgo.toISOString().split('T')[0];
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
 
-  const [startDate, setStartDate] = useState(threeMonthsAgoStr);
+  const [startDate, setStartDate] = useState(sixMonthsAgoStr);
   const [endDate, setEndDate] = useState(today);
+
+  // Generate 6-month period presets
+  const generatePeriodPresets = () => {
+    const presets = [];
+    const currentYear = new Date().getFullYear();
+    
+    // Last 6 months
+    presets.push({
+      label: 'Last 6 Months',
+      start: sixMonthsAgoStr,
+      end: today
+    });
+    
+    // Current and previous years H1/H2
+    for (let year = currentYear; year >= currentYear - 2; year--) {
+      presets.push({
+        label: `H1 ${year} (Jan-Jun)`,
+        start: `${year}-01-01`,
+        end: `${year}-06-30`
+      });
+      presets.push({
+        label: `H2 ${year} (Jul-Dec)`,
+        start: `${year}-07-01`,
+        end: `${year}-12-31`
+      });
+    }
+    
+    return presets;
+  };
+
+  const periodPresets = generatePeriodPresets();
+
+  const applyPreset = (preset: { start: string; end: string }) => {
+    setStartDate(preset.start);
+    setEndDate(preset.end);
+  };
   const [selectedRegion, setSelectedRegion] = useState<'all' | 'Perth North' | 'Perth South'>('all');
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -285,22 +321,52 @@ const ProgramReporting: React.FC<{
   const createWordDoc = () => {
       if (!reportData) return;
 
+      const reportPeriodStart = new Date(reportData.dateRange.start).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const reportPeriodEnd = new Date(reportData.dateRange.end).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const generatedDate = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+
       const styles = `<style>
-          body { font-family: Arial, sans-serif; font-size: 11pt; }
-          h1 { font-size: 22pt; text-align: center; } h2 { font-size: 16pt; border-bottom: 1px solid #ccc; padding-bottom: 2px; margin-top: 20px; }
-          h3 { font-size: 12pt; font-weight: bold; } p { margin-bottom: 10px; }
-          table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-          th, td { border: 1px solid #dddddd; text-align: left; padding: 8px; }
-          th { background-color: #f2f2f2; }
+          body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333; }
+          h1 { font-size: 24pt; text-align: center; color: #2c5282; margin-bottom: 5px; }
+          .subtitle { text-align: center; color: #666; font-size: 12pt; margin-bottom: 20px; }
+          h2 { font-size: 16pt; color: #2c5282; border-bottom: 2px solid #84cc16; padding-bottom: 5px; margin-top: 25px; }
+          h3 { font-size: 12pt; font-weight: bold; color: #444; margin-top: 15px; } 
+          p { margin-bottom: 10px; }
+          .highlight { background-color: #f0fdf4; padding: 15px; border-left: 4px solid #84cc16; margin: 15px 0; }
+          .recommendation { background-color: #fef3c7; padding: 10px; border-left: 4px solid #f59e0b; margin: 10px 0; font-style: italic; }
+          table { border-collapse: collapse; width: 100%; margin-top: 10px; margin-bottom: 15px; }
+          th, td { border: 1px solid #d1d5db; text-align: left; padding: 10px; }
+          th { background-color: #84cc16; color: white; font-weight: bold; }
+          tr:nth-child(even) { background-color: #f9fafb; }
+          .summary-box { background-color: #eff6ff; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .metric-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #ccc; }
+          .footer { text-align: center; font-size: 10pt; color: #888; margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; }
       </style>`;
 
-      let content = `<h1>Program Report</h1><p style="text-align:center;">Reporting Period: ${reportData.dateRange.start} to ${reportData.dateRange.end}</p>`;
-      content += `<p style="text-align:center;">Region: ${selectedRegion}</p>`;
+      let content = `
+        <h1>MultiNav Health Navigation Program Report</h1>
+        <p class="subtitle"><strong>Reporting Period:</strong> ${reportPeriodStart} to ${reportPeriodEnd}</p>
+        <p class="subtitle"><strong>Region:</strong> ${selectedRegion === 'all' ? 'All Regions' : selectedRegion} | <strong>Report Generated:</strong> ${generatedDate}</p>
+      `;
       
-      content += `<h2>AI-Generated Summary & Recommendations</h2>`;
+      // Executive Summary
+      content += `<h2>Executive Summary</h2>`;
+      content += `<div class="summary-box">
+        <p>This report covers the health navigation activities for the 6-month period from <strong>${reportPeriodStart}</strong> to <strong>${reportPeriodEnd}</strong>.</p>
+        <p><strong>Key Highlights:</strong></p>
+        <ul>
+          <li><strong>${reportData.clientSummary.total}</strong> new clients registered during this period</li>
+          <li><strong>${reportData.activitySummary.total}</strong> activity records logged</li>
+          <li><strong>${reportData.activitySummary.totalItems}</strong> total service activities delivered</li>
+          <li><strong>${reportData.activitySummary.totalDischarges}</strong> clients successfully discharged</li>
+        </ul>
+      </div>`;
+      
+      // AI Insights Section
+      content += `<h2>AI-Generated Insights & Recommendations</h2>`;
       reportData.aiInsights.forEach(i => {
-          content += `<h3>${i.title}</h3><p>${i.insight}</p>`;
-          if(i.recommendation) content += `<p><em><b>Recommendation:</b> ${i.recommendation}</em></p>`;
+          content += `<div class="highlight"><h3>${i.title}</h3><p>${i.insight}</p></div>`;
+          if(i.recommendation) content += `<div class="recommendation"><strong>Recommendation:</strong> ${i.recommendation}</div>`;
       });
 
       const createTable = (headers: string[], data: (string|number)[][]) => {
@@ -309,26 +375,59 @@ const ProgramReporting: React.FC<{
           return table + '</table>';
       }
 
-      content += `<h2>Client Demographics</h2>` + 
-        createTable(['Metric', 'Value'], [['New Clients Registered', reportData.clientSummary.total]]) + 
-        createTable(['Client Ethnicity', 'Count'], reportData.clientSummary.ethnicities.map(e => [e.name, e.value])) + 
-        createTable(['Referral Source', 'Count'], reportData.clientSummary.referralSources.map(r => [r.name, r.value]));
+      // Client Demographics
+      content += `<h2>Client Demographics</h2>`;
+      content += createTable(['Metric', 'Value'], [
+        ['New Clients Registered', reportData.clientSummary.total],
+        ['Region Filter Applied', selectedRegion === 'all' ? 'All Regions' : selectedRegion]
+      ]);
       
-      content += `<h2>Health Navigation Activities</h2>` + 
-        createTable(['Metric', 'Value'], [
-            ['Activity Records', reportData.activitySummary.total],
-            ['Total Activities', reportData.activitySummary.totalItems],
-            ['Navigation', reportData.activitySummary.totalNavigationItems],
-            ['Services', reportData.activitySummary.totalServiceItems],
-            ['Discharges', reportData.activitySummary.totalDischarges]
-        ]) + 
-        createTable(['Top Navigation Assistance', 'Count'], reportData.activitySummary.navigationAssistance.map(n => [n.name, n.value])) + 
-        createTable(['Top Services Accessed', 'Count'], reportData.activitySummary.servicesAccessed.map(s => [s.name, s.value]));
+      if (reportData.clientSummary.regions && reportData.clientSummary.regions.length > 0) {
+        content += `<h3>Regional Distribution</h3>`;
+        content += createTable(['Region', 'Client Count'], reportData.clientSummary.regions.map(r => [r.name, r.value]));
+      }
+      
+      content += `<h3>Client Ethnicity Breakdown</h3>`;
+      content += createTable(['Ethnicity', 'Count'], reportData.clientSummary.ethnicities.map(e => [e.name, e.value]));
+      
+      content += `<h3>Referral Sources</h3>`;
+      content += createTable(['Referral Source', 'Count'], reportData.clientSummary.referralSources.map(r => [r.name, r.value]));
+      
+      // Health Navigation Activities
+      content += `<h2>Health Navigation Activities</h2>`;
+      content += createTable(['Activity Metric', 'Count'], [
+          ['Total Activity Records', reportData.activitySummary.total],
+          ['Total Service Activities', reportData.activitySummary.totalItems],
+          ['Navigation Assistance Items', reportData.activitySummary.totalNavigationItems],
+          ['Services Accessed Items', reportData.activitySummary.totalServiceItems],
+          ['Client Discharges', reportData.activitySummary.totalDischarges]
+      ]);
+      
+      content += `<h3>Navigation Assistance Provided</h3>`;
+      content += createTable(['Navigation Type', 'Count'], reportData.activitySummary.navigationAssistance.map(n => [n.name, n.value]));
+      
+      content += `<h3>Services Accessed</h3>`;
+      content += createTable(['Service Type', 'Count'], reportData.activitySummary.servicesAccessed.map(s => [s.name, s.value]));
 
-      const source = `data:application/vnd.ms-word;charset=utf-8,${encodeURIComponent(`<html><head>${styles}</head><body>${content}</body></html>`)}`;
+      // Workforce Summary
+      content += `<h2>Workforce Summary</h2>`;
+      content += createTable(['Workforce Metric', 'Value'], [
+        ['Total FTE', reportData.workforceSummary.totalFTE.toFixed(2)],
+        ['Perth North FTE', reportData.workforceSummary.northFTE.toFixed(2)],
+        ['Perth South FTE', reportData.workforceSummary.southFTE.toFixed(2)],
+        ['Languages Covered', reportData.workforceSummary.languages.join(', ')]
+      ]);
+
+      // Footer
+      content += `<div class="footer">
+        <p>This report was generated by MultiNav iCRM on ${generatedDate}</p>
+        <p>For questions about this report, please contact your Program Coordinator.</p>
+      </div>`;
+
+      const source = `data:application/vnd.ms-word;charset=utf-8,${encodeURIComponent(`<html><head><meta charset="UTF-8">${styles}</head><body>${content}</body></html>`)}`;
       const link = document.createElement("a");
       link.href = source;
-      link.download = `Program_Report_${startDate}_to_${endDate}.doc`;
+      link.download = `MultiNav_Program_Report_${startDate}_to_${endDate}.doc`;
       link.click();
   };
 
@@ -338,17 +437,37 @@ const ProgramReporting: React.FC<{
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Program Reporting</h2>
         <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={createPdf} disabled={!reportData || isLoading} className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-500 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50">
+            <button onClick={createPdf} disabled={!reportData || isLoading} className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-500 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50" title="Download as PDF">
                 <FileDown className="mr-2 h-4 w-4" /> PDF
             </button>
-             <button onClick={createWordDoc} disabled={!reportData || isLoading} className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-500 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50">
-                <FileDown className="mr-2 h-4 w-4" /> Word
+             <button onClick={createWordDoc} disabled={!reportData || isLoading} className="inline-flex items-center px-3 py-2 border border-blue-300 dark:border-blue-500 text-sm font-medium rounded-md shadow-sm text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-800/50 disabled:opacity-50" title="Download as Word Document">
+                <FileText className="mr-2 h-4 w-4" /> Word
             </button>
         </div>
       </div>
 
       <div className="p-4 bg-baby-blue-50/50 dark:bg-gray-800/60 rounded-lg border border-baby-blue-200 dark:border-gray-700 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        {/* 6-Month Period Presets */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quick Select (6-Month Periods)</label>
+          <div className="flex flex-wrap gap-2">
+            {periodPresets.map((preset, idx) => (
+              <button
+                key={idx}
+                onClick={() => applyPreset(preset)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                  startDate === preset.start && endDate === preset.end
+                    ? 'bg-lime-green-500 text-white border-lime-green-500'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-lime-green-50 dark:hover:bg-gray-600 hover:border-lime-green-300'
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
             <div>
                 <label htmlFor="region" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Region</label>
                 <select 
