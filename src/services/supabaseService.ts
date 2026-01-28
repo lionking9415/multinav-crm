@@ -12,7 +12,8 @@ import type {
   User,
   UserRole,
   UserActivity,
-  CommunityEngagement
+  CommunityEngagement,
+  SurveyResponse
 } from '../types';
 
 // Initialize Supabase client
@@ -896,6 +897,7 @@ export const communityEngagementService = {
     return (data || []).map(engagement => ({
       id: engagement.id,
       dateOfMeeting: engagement.date_of_meeting,
+      agencyType: engagement.agency_type || 'external',
       agencyName: engagement.agency_name,
       staffPresent: engagement.staff_present,
       meetingNotes: engagement.meeting_notes,
@@ -912,6 +914,7 @@ export const communityEngagementService = {
       .insert({
         id: engagement.id,
         date_of_meeting: engagement.dateOfMeeting,
+        agency_type: engagement.agencyType,
         agency_name: engagement.agencyName,
         staff_present: engagement.staffPresent,
         meeting_notes: engagement.meetingNotes,
@@ -931,6 +934,7 @@ export const communityEngagementService = {
     const updateData: any = {};
     
     if (engagement.dateOfMeeting !== undefined) updateData.date_of_meeting = engagement.dateOfMeeting;
+    if (engagement.agencyType !== undefined) updateData.agency_type = engagement.agencyType;
     if (engagement.agencyName !== undefined) updateData.agency_name = engagement.agencyName;
     if (engagement.staffPresent !== undefined) updateData.staff_present = engagement.staffPresent;
     if (engagement.meetingNotes !== undefined) updateData.meeting_notes = engagement.meetingNotes;
@@ -947,6 +951,7 @@ export const communityEngagementService = {
     return {
       id: data.id,
       dateOfMeeting: data.date_of_meeting,
+      agencyType: data.agency_type || 'external',
       agencyName: data.agency_name,
       staffPresent: data.staff_present,
       meetingNotes: data.meeting_notes,
@@ -964,6 +969,79 @@ export const communityEngagementService = {
       .eq('id', id);
     
     if (error) throw error;
+  }
+};
+
+// Survey Response Functions
+export const surveyService = {
+  async getAll(startDate?: string, endDate?: string): Promise<SurveyResponse[]> {
+    let query = supabase
+      .from('survey_responses')
+      .select('*')
+      .order('submitted_at', { ascending: false });
+    
+    if (startDate) {
+      query = query.gte('submitted_at', startDate);
+    }
+    if (endDate) {
+      query = query.lte('submitted_at', endDate + 'T23:59:59.999Z');
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    return (data || []).map(response => ({
+      id: response.id,
+      clientId: response.client_id,
+      q1Rating: response.q1_rating,
+      q2Rating: response.q2_rating,
+      q3Rating: response.q3_rating,
+      submittedAt: response.submitted_at
+    }));
+  },
+
+  async create(response: SurveyResponse): Promise<SurveyResponse> {
+    const { data, error } = await supabase
+      .from('survey_responses')
+      .insert({
+        id: response.id,
+        client_id: response.clientId,
+        q1_rating: response.q1Rating,
+        q2_rating: response.q2Rating,
+        q3_rating: response.q3Rating,
+        submitted_at: response.submittedAt
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return response;
+  },
+
+  async getByClientId(clientId: string): Promise<SurveyResponse | null> {
+    const { data, error } = await supabase
+      .from('survey_responses')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') return null; // No rows found
+      throw error;
+    }
+    
+    return {
+      id: data.id,
+      clientId: data.client_id,
+      q1Rating: data.q1_rating,
+      q2Rating: data.q2_rating,
+      q3Rating: data.q3_rating,
+      submittedAt: data.submitted_at
+    };
   }
 };
 

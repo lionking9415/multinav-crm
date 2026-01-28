@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import type { Client, HealthActivity, WorkforceData } from '../types';
+import type { Client, HealthActivity, WorkforceData, SurveyResponse } from '../types';
 import Card from './Card';
-import { Zap, Calendar, FileDown, AlertTriangle, Bot, Lightbulb, FileText } from 'lucide-react';
+import { Zap, Calendar, FileDown, AlertTriangle, Bot, Lightbulb, FileText, Smile } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { generateReportInsights } from '../services/geminiService';
+import { surveyService } from '../services/supabaseService';
 
 interface AiInsight {
   title: string;
@@ -34,6 +35,14 @@ interface ReportData {
     northFTE: number;
     southFTE: number;
     languages: string[];
+  };
+  surveySummary: {
+    totalResponses: number;
+    q1Average: number;
+    q2Average: number;
+    q3Average: number;
+    overallAverage: number;
+    ratingDistribution: { rating: number; count: number }[];
   };
   aiInsights: AiInsight[];
 }
@@ -191,6 +200,52 @@ const ProgramReporting: React.FC<{
         languages: [...new Set(workforce.north.flatMap(s => s.languages).concat(workforce.south.flatMap(s => s.languages)))],
     };
 
+    // Load survey responses for the period
+    let surveySummary = {
+        totalResponses: 0,
+        q1Average: 0,
+        q2Average: 0,
+        q3Average: 0,
+        overallAverage: 0,
+        ratingDistribution: [
+            { rating: 1, count: 0 },
+            { rating: 2, count: 0 },
+            { rating: 3, count: 0 },
+            { rating: 4, count: 0 },
+            { rating: 5, count: 0 },
+        ]
+    };
+
+    try {
+        const surveyResponses = await surveyService.getAll(startDate, endDate);
+        if (surveyResponses.length > 0) {
+            const totalResponses = surveyResponses.length;
+            const q1Sum = surveyResponses.reduce((sum, r) => sum + r.q1Rating, 0);
+            const q2Sum = surveyResponses.reduce((sum, r) => sum + r.q2Rating, 0);
+            const q3Sum = surveyResponses.reduce((sum, r) => sum + r.q3Rating, 0);
+            
+            // Calculate rating distribution (average all 3 questions per response)
+            const ratingCounts = [0, 0, 0, 0, 0];
+            surveyResponses.forEach(r => {
+                // Count individual question ratings
+                ratingCounts[r.q1Rating - 1]++;
+                ratingCounts[r.q2Rating - 1]++;
+                ratingCounts[r.q3Rating - 1]++;
+            });
+
+            surveySummary = {
+                totalResponses,
+                q1Average: Number((q1Sum / totalResponses).toFixed(2)),
+                q2Average: Number((q2Sum / totalResponses).toFixed(2)),
+                q3Average: Number((q3Sum / totalResponses).toFixed(2)),
+                overallAverage: Number(((q1Sum + q2Sum + q3Sum) / (totalResponses * 3)).toFixed(2)),
+                ratingDistribution: ratingCounts.map((count, idx) => ({ rating: idx + 1, count }))
+            };
+        }
+    } catch (error) {
+        console.log('[ProgramReporting] Could not load survey data:', error);
+    }
+
     try {
         const aiInsights = await generateReportInsights(clientSummary, activitySummary, workforceSummary, { start: startDate, end: endDate });
         setReportData({
@@ -198,6 +253,7 @@ const ProgramReporting: React.FC<{
             clientSummary,
             activitySummary,
             workforceSummary,
+            surveySummary,
             aiInsights
         });
     } catch (e) {
@@ -315,6 +371,37 @@ const ProgramReporting: React.FC<{
         y = (doc as any).lastAutoTable.finalY;
     });
 
+    // Patient Satisfaction Survey Section
+    if (reportData.surveySummary.totalResponses > 0) {
+        addSection('Patient Satisfaction Survey', () => {
+            (doc as any).autoTable({
+                startY: y, theme: 'striped',
+                head: [['Survey Metric', 'Score']],
+                body: [
+                    ['Total Survey Responses', reportData.surveySummary.totalResponses],
+                    ['Overall Average Rating', `${reportData.surveySummary.overallAverage}/5`],
+                    ['Q1: Staff showed respect', `${reportData.surveySummary.q1Average}/5`],
+                    ['Q2: Opportunities to discuss needs', `${reportData.surveySummary.q2Average}/5`],
+                    ['Q3: Culture & values respected', `${reportData.surveySummary.q3Average}/5`]
+                ],
+            });
+            y = (doc as any).lastAutoTable.finalY + 5;
+            
+            (doc as any).autoTable({
+                startY: y, theme: 'striped',
+                head: [['Rating', 'Emoji', 'Count']],
+                body: [
+                    ['Strongly Disagree', '😠', reportData.surveySummary.ratingDistribution[0].count],
+                    ['Disagree', '😟', reportData.surveySummary.ratingDistribution[1].count],
+                    ['Neutral', '😐', reportData.surveySummary.ratingDistribution[2].count],
+                    ['Agree', '🙂', reportData.surveySummary.ratingDistribution[3].count],
+                    ['Strongly Agree', '😄', reportData.surveySummary.ratingDistribution[4].count]
+                ],
+            });
+            y = (doc as any).lastAutoTable.finalY;
+        });
+    }
+
     doc.save(`Program_Report_${startDate}_to_${endDate}.pdf`);
   };
 
@@ -417,6 +504,41 @@ const ProgramReporting: React.FC<{
         ['Perth South FTE', reportData.workforceSummary.southFTE.toFixed(2)],
         ['Languages Covered', reportData.workforceSummary.languages.join(', ')]
       ]);
+
+      // Patient Satisfaction Survey
+      content += `<h2>Patient Satisfaction Survey Results</h2>`;
+      if (reportData.surveySummary.totalResponses > 0) {
+        const overallEmoji = reportData.surveySummary.overallAverage >= 4.5 ? '😄' : 
+                            reportData.surveySummary.overallAverage >= 3.5 ? '🙂' : 
+                            reportData.surveySummary.overallAverage >= 2.5 ? '😐' : 
+                            reportData.surveySummary.overallAverage >= 1.5 ? '😟' : '😠';
+        const overallLabel = reportData.surveySummary.overallAverage >= 4 ? 'Excellent' : 
+                            reportData.surveySummary.overallAverage >= 3 ? 'Good' : 
+                            reportData.surveySummary.overallAverage >= 2 ? 'Fair' : 'Needs Improvement';
+        
+        content += `<div class="summary-box">
+          <p><strong>Total Survey Responses:</strong> ${reportData.surveySummary.totalResponses}</p>
+          <p><strong>Overall Satisfaction:</strong> ${reportData.surveySummary.overallAverage}/5 ${overallEmoji} (${overallLabel})</p>
+        </div>`;
+        
+        content += `<h3>Question Breakdown</h3>`;
+        content += createTable(['Question', 'Average Rating'], [
+          ['Staff showed respect for how you were feeling', `${reportData.surveySummary.q1Average}/5`],
+          ['Opportunities to discuss support or care needs', `${reportData.surveySummary.q2Average}/5`],
+          ['Culture, beliefs and values were respected', `${reportData.surveySummary.q3Average}/5`]
+        ]);
+        
+        content += `<h3>Rating Distribution</h3>`;
+        content += createTable(['Rating', 'Response Count'], [
+          ['😠 Strongly Disagree', reportData.surveySummary.ratingDistribution[0].count],
+          ['😟 Disagree', reportData.surveySummary.ratingDistribution[1].count],
+          ['😐 Neutral', reportData.surveySummary.ratingDistribution[2].count],
+          ['🙂 Agree', reportData.surveySummary.ratingDistribution[3].count],
+          ['😄 Strongly Agree', reportData.surveySummary.ratingDistribution[4].count]
+        ]);
+      } else {
+        content += `<p><em>No survey responses were received during this reporting period.</em></p>`;
+      }
 
       // Footer
       content += `<div class="footer">
@@ -583,6 +705,109 @@ const ProgramReporting: React.FC<{
                             {reportData.clientSummary.referralSources.slice(0,3).map(r => <li key={r.name} className="flex justify-between"><span>{r.name}</span> <span className="font-bold">{r.value}</span></li>)}
                         </ul>
                      </div>
+                </div>
+
+                {/* Patient Satisfaction Survey Results */}
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <h4 className="font-semibold text-md text-lime-green-600 dark:text-lime-green-400 mb-4 flex items-center">
+                        <Smile className="mr-2 h-5 w-5"/> Patient Satisfaction Survey Results
+                    </h4>
+                    
+                    {reportData.surveySummary.totalResponses > 0 ? (
+                        <div className="space-y-4">
+                            {/* Overall Stats */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="text-center p-3 bg-lime-green-50 dark:bg-lime-green-900/30 rounded-lg">
+                                    <p className="text-2xl font-bold text-lime-green-600 dark:text-lime-green-400">{reportData.surveySummary.totalResponses}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Total Responses</p>
+                                </div>
+                                <div className="text-center p-3 bg-baby-blue-50 dark:bg-baby-blue-900/30 rounded-lg">
+                                    <p className="text-2xl font-bold text-baby-blue-600 dark:text-baby-blue-400">{reportData.surveySummary.overallAverage}/5</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Overall Average</p>
+                                </div>
+                                <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg col-span-2">
+                                    <div className="flex justify-center gap-1 text-2xl">
+                                        {reportData.surveySummary.overallAverage >= 4.5 ? '😄' : 
+                                         reportData.surveySummary.overallAverage >= 3.5 ? '🙂' : 
+                                         reportData.surveySummary.overallAverage >= 2.5 ? '😐' : 
+                                         reportData.surveySummary.overallAverage >= 1.5 ? '😟' : '😠'}
+                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        {reportData.surveySummary.overallAverage >= 4 ? 'Excellent' : 
+                                         reportData.surveySummary.overallAverage >= 3 ? 'Good' : 
+                                         reportData.surveySummary.overallAverage >= 2 ? 'Fair' : 'Needs Improvement'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Question Breakdown */}
+                            <div className="space-y-3">
+                                <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">Question Breakdown</h5>
+                                
+                                {/* Q1 */}
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">Staff showed respect for how you were feeling</p>
+                                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mt-1">
+                                            <div className="bg-lime-green-500 h-2 rounded-full" style={{ width: `${(reportData.surveySummary.q1Average / 5) * 100}%` }}></div>
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300 w-12 text-right">{reportData.surveySummary.q1Average}/5</span>
+                                </div>
+
+                                {/* Q2 */}
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">Opportunities to discuss support or care needs</p>
+                                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mt-1">
+                                            <div className="bg-baby-blue-500 h-2 rounded-full" style={{ width: `${(reportData.surveySummary.q2Average / 5) * 100}%` }}></div>
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300 w-12 text-right">{reportData.surveySummary.q2Average}/5</span>
+                                </div>
+
+                                {/* Q3 */}
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">Culture, beliefs and values were respected</p>
+                                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mt-1">
+                                            <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${(reportData.surveySummary.q3Average / 5) * 100}%` }}></div>
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300 w-12 text-right">{reportData.surveySummary.q3Average}/5</span>
+                                </div>
+                            </div>
+
+                            {/* Rating Distribution */}
+                            <div>
+                                <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rating Distribution</h5>
+                                <div className="flex items-end gap-2 h-20">
+                                    {reportData.surveySummary.ratingDistribution.map((item, idx) => {
+                                        const maxCount = Math.max(...reportData.surveySummary.ratingDistribution.map(r => r.count));
+                                        const height = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                                        const emojis = ['😠', '😟', '😐', '🙂', '😄'];
+                                        const colors = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-lime-400', 'bg-green-400'];
+                                        return (
+                                            <div key={idx} className="flex-1 flex flex-col items-center">
+                                                <div 
+                                                    className={`w-full ${colors[idx]} rounded-t transition-all`} 
+                                                    style={{ height: `${Math.max(height, 5)}%` }}
+                                                    title={`${item.count} responses`}
+                                                ></div>
+                                                <span className="text-lg mt-1">{emojis[idx]}</span>
+                                                <span className="text-xs text-gray-500">{item.count}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                            <Smile className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No survey responses for this period</p>
+                        </div>
+                    )}
                 </div>
             </div>
         )}

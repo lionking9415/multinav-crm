@@ -110,9 +110,19 @@ export interface PatientData {
   messages: ChatMessage[];
 }
 
+export interface SurveyResponse {
+  id: string;
+  clientId: string;
+  q1Rating: number; // Staff showed respect for how you were feeling
+  q2Rating: number; // You had opportunities to discuss your support or care needs
+  q3Rating: number; // Your culture, beliefs and values were respected
+  submittedAt: string;
+}
+
 export interface CommunityEngagement {
   id: string;
   dateOfMeeting: string;
+  agencyType: 'internal' | 'external';
   agencyName: string;
   staffPresent: string;
   meetingNotes: string;

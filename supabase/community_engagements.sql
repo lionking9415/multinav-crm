@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS community_engagements (
     id VARCHAR(50) PRIMARY KEY,
     date_of_meeting DATE NOT NULL,
+    agency_type VARCHAR(20) DEFAULT 'external' CHECK (agency_type IN ('internal', 'external')),
     agency_name VARCHAR(255) NOT NULL,
     staff_present TEXT,
     meeting_notes TEXT,
@@ -17,6 +18,7 @@ CREATE TABLE IF NOT EXISTS community_engagements (
 
 -- Create indexes for community engagements
 CREATE INDEX IF NOT EXISTS idx_community_engagements_date ON community_engagements(date_of_meeting DESC);
+CREATE INDEX IF NOT EXISTS idx_community_engagements_type ON community_engagements(agency_type);
 CREATE INDEX IF NOT EXISTS idx_community_engagements_agency ON community_engagements(agency_name);
 CREATE INDEX IF NOT EXISTS idx_community_engagements_created_by ON community_engagements(created_by);
 

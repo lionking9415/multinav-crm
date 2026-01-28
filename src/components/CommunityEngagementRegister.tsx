@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { CommunityEngagement } from '../types';
 import Card from './Card';
 import { communityEngagementService } from '../services/supabaseService';
-import { Plus, Trash2, Pencil, FileDown, Search, X, Calendar, Building2, Users, FileText } from 'lucide-react';
+import { Plus, Trash2, Pencil, FileDown, Search, X, Calendar, Building2, Users, FileText, Home, Globe } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -26,6 +26,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     dateOfMeeting: '',
+    agencyType: 'external' as 'internal' | 'external',
     agencyName: '',
     staffPresent: '',
     meetingNotes: ''
@@ -62,6 +63,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
     setSelectedEngagement(null);
     setFormData({
       dateOfMeeting: new Date().toISOString().split('T')[0],
+      agencyType: 'external',
       agencyName: '',
       staffPresent: '',
       meetingNotes: ''
@@ -73,6 +75,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
     setSelectedEngagement(engagement);
     setFormData({
       dateOfMeeting: engagement.dateOfMeeting,
+      agencyType: engagement.agencyType || 'external',
       agencyName: engagement.agencyName,
       staffPresent: engagement.staffPresent,
       meetingNotes: engagement.meetingNotes
@@ -136,12 +139,13 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
   };
   
   const handleDownloadCSV = () => {
-    const headers = ["ID", "Date of Meeting/Event", "Agency Name", "Staff Present", "Meeting Notes", "Created By", "Created At"];
+    const headers = ["ID", "Date of Meeting/Event", "Agency Type", "Agency Name", "Staff Present", "Meeting Notes", "Created By", "Created At"];
     const csvRows = [
       headers.join(','),
       ...filteredEngagements.map(e => [
         `"${e.id}"`,
         `"${e.dateOfMeeting}"`,
+        `"${e.agencyType === 'internal' ? 'Internal' : 'External'}"`,
         `"${e.agencyName.replace(/"/g, '""')}"`,
         `"${e.staffPresent.replace(/"/g, '""')}"`,
         `"${e.meetingNotes.replace(/"/g, '""')}"`,
@@ -163,12 +167,13 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
-    const tableHead = [["Date", "Agency Name", "Staff Present", "Meeting Notes"]];
+    const tableHead = [["Date", "Type", "Agency Name", "Staff Present", "Notes"]];
     const tableBody = filteredEngagements.map(e => [
       e.dateOfMeeting ? new Date(e.dateOfMeeting).toLocaleDateString() : 'N/A',
+      e.agencyType === 'internal' ? 'Internal' : 'External',
       e.agencyName || 'N/A',
       e.staffPresent || 'N/A',
-      e.meetingNotes.length > 50 ? e.meetingNotes.substring(0, 50) + '...' : e.meetingNotes || 'N/A'
+      e.meetingNotes.length > 40 ? e.meetingNotes.substring(0, 40) + '...' : e.meetingNotes || 'N/A'
     ]);
 
     (doc as any).autoTable({
@@ -223,6 +228,40 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white"
               required
             />
+          </div>
+
+          {/* Agency Type */}
+          <div>
+            <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <Building2 className="w-4 h-4 mr-2 text-lime-green-500" />
+              Agency Type <span className="text-red-500 ml-1">*</span>
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, agencyType: 'internal' })}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                  formData.agencyType === 'internal'
+                    ? 'border-lime-green-500 bg-lime-green-50 dark:bg-lime-green-900/30 text-lime-green-700 dark:text-lime-green-300'
+                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500'
+                }`}
+              >
+                <Home className={`w-5 h-5 ${formData.agencyType === 'internal' ? 'text-lime-green-600' : 'text-gray-500'}`} />
+                <span className="font-medium">Internal Agency</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, agencyType: 'external' })}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                  formData.agencyType === 'external'
+                    ? 'border-baby-blue-500 bg-baby-blue-50 dark:bg-baby-blue-900/30 text-baby-blue-700 dark:text-baby-blue-300'
+                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500'
+                }`}
+              >
+                <Globe className={`w-5 h-5 ${formData.agencyType === 'external' ? 'text-baby-blue-600' : 'text-gray-500'}`} />
+                <span className="font-medium">External Agency</span>
+              </button>
+            </div>
           </div>
 
           {/* Agency Name */}
@@ -358,6 +397,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
           <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-300">
             <tr>
               <th scope="col" className="px-6 py-3">Date</th>
+              <th scope="col" className="px-6 py-3">Type</th>
               <th scope="col" className="px-6 py-3">Agency Name</th>
               <th scope="col" className="px-6 py-3">Staff Present</th>
               <th scope="col" className="px-6 py-3">Meeting Notes</th>
@@ -369,6 +409,16 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               <tr key={engagement.id} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                 <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                   {engagement.dateOfMeeting ? new Date(engagement.dateOfMeeting).toLocaleDateString() : 'N/A'}
+                </td>
+                <td className="px-6 py-4">
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    engagement.agencyType === 'internal' 
+                      ? 'bg-lime-green-100 text-lime-green-700 dark:bg-lime-green-900/50 dark:text-lime-green-300'
+                      : 'bg-baby-blue-100 text-baby-blue-700 dark:bg-baby-blue-900/50 dark:text-baby-blue-300'
+                  }`}>
+                    {engagement.agencyType === 'internal' ? <Home className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+                    {engagement.agencyType === 'internal' ? 'Internal' : 'External'}
+                  </span>
                 </td>
                 <td className="px-6 py-4">
                   <span className="font-medium text-gray-900 dark:text-white">{engagement.agencyName}</span>
@@ -415,7 +465,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               </tr>
             )) : (
               <tr>
-                <td colSpan={5} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                <td colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
                   {searchQuery ? 'No engagements match your search.' : 'No engagements recorded. Add a new engagement to get started.'}
                 </td>
               </tr>

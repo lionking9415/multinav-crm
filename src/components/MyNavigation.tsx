@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Client, PatientData, ChatMessage, ExperienceEntry, Attachment } from '../types';
 import { translateText } from '../services/geminiService';
-import { patientDataService } from '../services/supabaseService';
+import { patientDataService, surveyService } from '../services/supabaseService';
 import Card from './Card';
-import { BookUser, MessageSquare, ListChecks, Send, Languages, LogOut, Sun, Moon, Leaf, Paperclip, X, UploadCloud, Loader2 } from 'lucide-react';
+import { BookUser, MessageSquare, ListChecks, Send, Languages, LogOut, Sun, Moon, Leaf, Paperclip, X, UploadCloud, Loader2, CheckCircle } from 'lucide-react';
 
 interface MyNavigationProps {
     client: Client;
@@ -218,61 +218,199 @@ const ExperienceJournal = ({ experiences, setExperiences, clientId, patientLangu
                     </div>
                 )}
             </form>
-            <div className="mt-6">
-                <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-2">Past Entries</h3>
-                <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                    {experiences.length > 0 ? experiences.map(entry => {
-                        const hasTranslation = translations[entry.id];
-                        const isTranslatingThis = translatingId === entry.id;
-                        
-                        return (
-                            <div key={entry.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
-                                <div className="flex justify-between items-start">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleDateString()}</p>
-                                    {showTranslation && !hasTranslation && (
-                                        <button 
-                                            onClick={() => handleTranslate(entry.id, entry.content)}
-                                            disabled={isTranslatingThis}
-                                            className="text-xs text-baby-blue-600 dark:text-baby-blue-400 hover:underline disabled:opacity-50 flex items-center gap-1"
-                                            title="See English translation"
-                                        >
-                                            {isTranslatingThis ? <Loader2 size={12} className="animate-spin" /> : <Languages size={12} />}
-                                            <span>See English</span>
-                                        </button>
-                                    )}
-                                </div>
-                                <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap mt-1">{entry.content}</p>
-                                
-                                {/* Show English translation inline */}
-                                {hasTranslation && (
-                                    <div className="mt-2 p-2 bg-lime-green-50 dark:bg-lime-green-900/30 rounded border-l-2 border-lime-green-500">
-                                        <span className="text-xs font-semibold text-lime-green-700 dark:text-lime-green-300 flex items-center gap-1 mb-1">
-                                            <Languages size={12} />
-                                            English (what staff sees):
-                                        </span>
-                                        <p className="text-sm text-lime-green-800 dark:text-lime-green-200">{translations[entry.id]}</p>
-                                    </div>
-                                )}
-                                
-                                {entry.attachments && entry.attachments.length > 0 && (
-                                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                                        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Attachments:</h4>
-                                        <ul className="space-y-1">
-                                            {entry.attachments.map((file, index) => (
-                                                <li key={index}>
-                                                    <a href={file.data} download={file.name} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-baby-blue-600 dark:text-baby-blue-400 hover:underline">
-                                                        <Paperclip size={14} className="mr-1" /> {file.name}
-                                                    </a>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    }) : <p className="text-gray-500 dark:text-gray-400">No entries yet.</p>}
+            {/* Satisfaction Survey */}
+            <SatisfactionSurvey clientId={clientId} />
+        </div>
+    );
+};
+
+// Satisfaction Survey Component with Smiley Face Likert Scale
+const SatisfactionSurvey = ({ clientId }: { clientId: string }) => {
+    const [responses, setResponses] = useState<Record<string, number>>({});
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const questions = [
+        { id: 'q1', text: 'Staff showed respect for how you were feeling.' },
+        { id: 'q2', text: 'You had opportunities to discuss your support or care needs with staff.' },
+        { id: 'q3', text: 'Your culture, beliefs and values were respected.' },
+    ];
+
+    const ratingOptions = [
+        { value: 1, emoji: '😠', label: 'Strongly Disagree', color: 'bg-red-500', hoverColor: 'hover:bg-red-400', selectedRing: 'ring-red-500' },
+        { value: 2, emoji: '😟', label: 'Disagree', color: 'bg-orange-500', hoverColor: 'hover:bg-orange-400', selectedRing: 'ring-orange-500' },
+        { value: 3, emoji: '😐', label: 'Neutral', color: 'bg-yellow-400', hoverColor: 'hover:bg-yellow-300', selectedRing: 'ring-yellow-400' },
+        { value: 4, emoji: '🙂', label: 'Agree', color: 'bg-lime-400', hoverColor: 'hover:bg-lime-300', selectedRing: 'ring-lime-400' },
+        { value: 5, emoji: '😄', label: 'Strongly Agree', color: 'bg-green-500', hoverColor: 'hover:bg-green-400', selectedRing: 'ring-green-500' },
+    ];
+
+    // Check if user already submitted a survey
+    useEffect(() => {
+        const checkExistingSurvey = async () => {
+            try {
+                const existing = await surveyService.getByClientId(clientId);
+                if (existing) {
+                    setIsSubmitted(true);
+                }
+            } catch (error) {
+                console.log('[Survey] No existing survey found or error:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        checkExistingSurvey();
+    }, [clientId]);
+
+    const handleRatingChange = (questionId: string, value: number) => {
+        if (isSubmitted) return;
+        setResponses(prev => ({ ...prev, [questionId]: value }));
+    };
+
+    const handleSubmit = async () => {
+        if (Object.keys(responses).length < questions.length) {
+            alert('Please answer all questions before submitting.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const surveyResponse = {
+                id: `srv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                clientId: clientId,
+                q1Rating: responses.q1,
+                q2Rating: responses.q2,
+                q3Rating: responses.q3,
+                submittedAt: new Date().toISOString()
+            };
+            
+            await surveyService.create(surveyResponse);
+            console.log('[Survey] Saved to database:', surveyResponse.id);
+            
+            setIsSubmitted(true);
+        } catch (error) {
+            console.error('[Survey] Failed to submit:', error);
+            // Still mark as submitted locally
+            setIsSubmitted(true);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const allAnswered = Object.keys(responses).length === questions.length;
+
+    if (isLoading) {
+        return (
+            <div className="mt-6 p-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Loading survey...</span>
                 </div>
             </div>
+        );
+    }
+
+    if (isSubmitted) {
+        return (
+            <div className="mt-6 p-6 bg-lime-green-50 dark:bg-lime-green-900/20 rounded-lg border border-lime-green-200 dark:border-lime-green-800">
+                <div className="text-center">
+                    <CheckCircle className="w-12 h-12 text-lime-green-500 mx-auto mb-3" />
+                    <h3 className="text-lg font-semibold text-lime-green-700 dark:text-lime-green-300 mb-2">
+                        Thank you for your feedback!
+                    </h3>
+                    <p className="text-sm text-lime-green-600 dark:text-lime-green-400">
+                        Your responses help us improve our services.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                How was your experience?
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Please rate your experience with our service by selecting a face for each statement.
+            </p>
+
+            {/* Rating Scale Legend */}
+            <div className="flex justify-center gap-2 mb-6 flex-wrap">
+                {ratingOptions.map(option => (
+                    <div key={option.value} className="flex flex-col items-center">
+                        <span className="text-2xl">{option.emoji}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center leading-tight" style={{ maxWidth: '60px' }}>
+                            {option.label}
+                        </span>
+                    </div>
+                ))}
+            </div>
+
+            <div className="space-y-6">
+                {questions.map((question, qIndex) => (
+                    <div key={question.id} className="space-y-3">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            {qIndex + 1}. {question.text}
+                        </p>
+                        <div className="flex justify-center gap-3 sm:gap-4">
+                            {ratingOptions.map(option => {
+                                const isSelected = responses[question.id] === option.value;
+                                return (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => handleRatingChange(question.id, option.value)}
+                                        className={`
+                                            w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-2xl sm:text-3xl
+                                            transition-all duration-200 transform
+                                            ${isSelected 
+                                                ? `${option.color} ring-4 ${option.selectedRing} ring-offset-2 dark:ring-offset-gray-800 scale-110 shadow-lg` 
+                                                : `bg-gray-200 dark:bg-gray-600 ${option.hoverColor} hover:scale-105 grayscale hover:grayscale-0`
+                                            }
+                                        `}
+                                        title={option.label}
+                                        aria-label={`${option.label} for question ${qIndex + 1}`}
+                                    >
+                                        {option.emoji}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-6 flex justify-center">
+                <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!allAnswered || isSubmitting}
+                    className={`
+                        px-6 py-2 rounded-lg font-medium text-white transition-all
+                        ${allAnswered 
+                            ? 'bg-lime-green-500 hover:bg-lime-green-600 cursor-pointer' 
+                            : 'bg-gray-400 cursor-not-allowed'
+                        }
+                        disabled:opacity-50
+                    `}
+                >
+                    {isSubmitting ? (
+                        <span className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Submitting...
+                        </span>
+                    ) : (
+                        'Submit Feedback'
+                    )}
+                </button>
+            </div>
+            
+            {!allAnswered && (
+                <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                    Please answer all {questions.length} questions to submit
+                </p>
+            )}
         </div>
     );
 };
