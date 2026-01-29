@@ -240,64 +240,83 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
     const internalCount = filteredEngagements.filter(e => e.agencyType === 'internal').length;
     const externalCount = filteredEngagements.filter(e => e.agencyType === 'external').length;
 
+    // Word document with landscape orientation and PDF-like styling
     const styles = `<style>
-      body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333; }
-      h1 { font-size: 22pt; text-align: center; color: #2c5282; margin-bottom: 5px; }
-      .subtitle { text-align: center; color: #666; font-size: 11pt; margin-bottom: 20px; }
-      h2 { font-size: 14pt; color: #2c5282; border-bottom: 2px solid #84cc16; padding-bottom: 5px; margin-top: 20px; }
-      .summary-box { background-color: #f0fdf4; padding: 15px; border-left: 4px solid #84cc16; margin: 15px 0; }
-      table { border-collapse: collapse; width: 100%; margin-top: 10px; margin-bottom: 15px; }
-      th, td { border: 1px solid #d1d5db; text-align: left; padding: 8px; vertical-align: top; }
-      th { background-color: #84cc16; color: white; font-weight: bold; }
+      @page { size: landscape; margin: 1cm; }
+      body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #333; }
+      h1 { font-size: 20pt; text-align: center; color: #2c5282; margin-bottom: 5px; border-bottom: 3px solid #84cc16; padding-bottom: 10px; }
+      .subtitle { text-align: center; color: #666; font-size: 10pt; margin-bottom: 15px; }
+      .summary-row { display: flex; justify-content: center; gap: 40px; margin-bottom: 20px; padding: 10px; background-color: #f8fafc; border-radius: 5px; }
+      .summary-item { text-align: center; }
+      .summary-value { font-size: 18pt; font-weight: bold; color: #84cc16; }
+      .summary-label { font-size: 9pt; color: #666; }
+      table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 9pt; }
+      th { background-color: #84cc16; color: white; font-weight: bold; padding: 8px 6px; text-align: left; border: 1px solid #6aa313; }
+      td { border: 1px solid #d1d5db; padding: 8px 6px; vertical-align: top; }
       tr:nth-child(even) { background-color: #f9fafb; }
-      .internal { color: #16a34a; font-weight: bold; }
-      .external { color: #2563eb; font-weight: bold; }
-      .footer { text-align: center; font-size: 9pt; color: #888; margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; }
+      tr:hover { background-color: #f0fdf4; }
+      .col-date { width: 70px; text-align: center; }
+      .col-type { width: 60px; text-align: center; }
+      .col-agency { width: 140px; }
+      .col-staff { width: 120px; }
+      .col-notes { width: auto; }
+      .type-internal { background-color: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 3px; font-size: 8pt; }
+      .type-external { background-color: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 3px; font-size: 8pt; }
+      .footer { text-align: center; font-size: 8pt; color: #888; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+      .page-number { text-align: right; font-size: 8pt; color: #999; }
     </style>`;
 
     let content = `
       <h1>Community Engagement Register</h1>
-      <p class="subtitle">Report Generated: ${generatedDate}</p>
+      <p class="subtitle">Generated: ${generatedDate} | Total Records: ${filteredEngagements.length}</p>
+      
+      <table style="width: auto; margin: 0 auto 20px auto; border: none;">
+        <tr style="background: none;">
+          <td style="border: none; text-align: center; padding: 10px 30px;">
+            <div class="summary-value">${filteredEngagements.length}</div>
+            <div class="summary-label">Total Engagements</div>
+          </td>
+          <td style="border: none; text-align: center; padding: 10px 30px;">
+            <div class="summary-value" style="color: #16a34a;">${internalCount}</div>
+            <div class="summary-label">Internal</div>
+          </td>
+          <td style="border: none; text-align: center; padding: 10px 30px;">
+            <div class="summary-value" style="color: #2563eb;">${externalCount}</div>
+            <div class="summary-label">External</div>
+          </td>
+        </tr>
+      </table>
     `;
 
-    // Summary section
-    content += `
-      <div class="summary-box">
-        <p><strong>Total Engagements:</strong> ${filteredEngagements.length}</p>
-        <p><strong>Internal Agency Meetings:</strong> ${internalCount}</p>
-        <p><strong>External Agency Meetings:</strong> ${externalCount}</p>
-      </div>
-    `;
-
-    // Engagements table
-    content += `<h2>Engagement Records</h2>`;
+    // Engagements table - matching PDF layout
     content += `<table>
       <tr>
-        <th style="width: 80px;">Date</th>
-        <th style="width: 70px;">Type</th>
-        <th style="width: 150px;">Agency Name</th>
-        <th style="width: 120px;">Staff Present</th>
-        <th>Meeting Notes</th>
+        <th class="col-date">Date</th>
+        <th class="col-type">Type</th>
+        <th class="col-agency">Agency Name</th>
+        <th class="col-staff">Staff Present</th>
+        <th class="col-notes">Meeting Notes</th>
       </tr>`;
     
     filteredEngagements.forEach(e => {
-      const typeClass = e.agencyType === 'internal' ? 'internal' : 'external';
+      const typeClass = e.agencyType === 'internal' ? 'type-internal' : 'type-external';
       const typeLabel = e.agencyType === 'internal' ? 'Internal' : 'External';
+      const notes = (e.meetingNotes || 'N/A').replace(/\n/g, '<br>');
       content += `
         <tr>
-          <td>${e.dateOfMeeting ? new Date(e.dateOfMeeting).toLocaleDateString() : 'N/A'}</td>
-          <td class="${typeClass}">${typeLabel}</td>
-          <td>${e.agencyName || 'N/A'}</td>
-          <td>${e.staffPresent || 'N/A'}</td>
-          <td>${e.meetingNotes || 'N/A'}</td>
+          <td class="col-date">${e.dateOfMeeting ? new Date(e.dateOfMeeting).toLocaleDateString() : 'N/A'}</td>
+          <td class="col-type"><span class="${typeClass}">${typeLabel}</span></td>
+          <td class="col-agency"><strong>${e.agencyName || 'N/A'}</strong></td>
+          <td class="col-staff">${e.staffPresent || '-'}</td>
+          <td class="col-notes">${notes}</td>
         </tr>
       `;
     });
     content += `</table>`;
 
-    // Footer
+    // Footer with page info
     content += `<div class="footer">
-      <p>This report was generated by MultiNav iCRM on ${generatedDate}</p>
+      <p>Community Engagement Register | MultiNav iCRM | Generated: ${generatedDate}</p>
     </div>`;
 
     const source = `data:application/vnd.ms-word;charset=utf-8,${encodeURIComponent(`<html><head><meta charset="UTF-8">${styles}</head><body>${content}</body></html>`)}`;
@@ -509,73 +528,65 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
       </div>
 
       <div className="overflow-x-auto relative shadow-md sm:rounded-lg">
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400 table-fixed">
           <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-300">
             <tr>
-              <th scope="col" className="px-6 py-3">Date</th>
-              <th scope="col" className="px-6 py-3">Type</th>
-              <th scope="col" className="px-6 py-3">Agency Name</th>
-              <th scope="col" className="px-6 py-3">Staff Present</th>
-              <th scope="col" className="px-6 py-3">Meeting Notes</th>
-              <th scope="col" className="px-6 py-3 text-right">Actions</th>
+              <th scope="col" className="px-3 py-3 w-24">Date</th>
+              <th scope="col" className="px-3 py-3 w-24">Type</th>
+              <th scope="col" className="px-3 py-3 w-36">Agency Name</th>
+              <th scope="col" className="px-3 py-3 w-32">Staff Present</th>
+              <th scope="col" className="px-3 py-3">Meeting Notes</th>
+              <th scope="col" className="px-3 py-3 w-20 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredEngagements.length > 0 ? filteredEngagements.map(engagement => (
               <tr key={engagement.id} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                <td className="px-3 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-xs">
                   {engagement.dateOfMeeting ? new Date(engagement.dateOfMeeting).toLocaleDateString() : 'N/A'}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-3 py-4">
                   <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                     engagement.agencyType === 'internal' 
                       ? 'bg-lime-green-100 text-lime-green-700 dark:bg-lime-green-900/50 dark:text-lime-green-300'
                       : 'bg-baby-blue-100 text-baby-blue-700 dark:bg-baby-blue-900/50 dark:text-baby-blue-300'
                   }`}>
                     {engagement.agencyType === 'internal' ? <Home className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
-                    {engagement.agencyType === 'internal' ? 'Internal' : 'External'}
+                    {engagement.agencyType === 'internal' ? 'Int' : 'Ext'}
                   </span>
                 </td>
-                <td className="px-6 py-4">
-                  <span className="font-medium text-gray-900 dark:text-white">{engagement.agencyName}</span>
+                <td className="px-3 py-4">
+                  <span className="font-medium text-gray-900 dark:text-white text-xs">{engagement.agencyName}</span>
                 </td>
-                <td className="px-6 py-4">
-                  {engagement.staffPresent || <span className="text-gray-400">Not specified</span>}
+                <td className="px-3 py-4 text-xs">
+                  {engagement.staffPresent || <span className="text-gray-400">-</span>}
                 </td>
-                <td className="px-6 py-4">
-                  <div className="max-w-xs truncate" title={engagement.meetingNotes}>
+                <td className="px-3 py-4">
+                  <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                     {engagement.meetingNotes || <span className="text-gray-400">No notes</span>}
                   </div>
                 </td>
-                <td className="px-6 py-4 text-right space-x-1">
+                <td className="px-3 py-4 text-right">
                   {/* Only show edit/delete if user owns the engagement or is admin/coordinator */}
                   {(currentUser?.role === 'admin' || 
                     currentUser?.role === 'coordinator' ||
                     engagement.createdBy === currentUser?.email ||
                     engagement.createdByName === currentUser?.name ||
                     !engagement.createdBy) && (
-                    <>
+                    <div className="flex justify-end gap-1">
                       <button 
                         onClick={() => handleEdit(engagement)} 
-                        className="p-2 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        className="p-1 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <Pencil className="h-5 w-5" />
+                        <Pencil className="h-4 w-4" />
                       </button>
                       <button 
                         onClick={() => handleDelete(engagement.id)} 
-                        className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        className="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
-                    </>
-                  )}
-                  {/* Show who created this if not the current user */}
-                  {currentUser?.role === 'navigator' && 
-                   engagement.createdBy !== currentUser?.email && 
-                   engagement.createdBy && (
-                    <span className="text-xs text-gray-400">
-                      Created by {engagement.createdByName || engagement.createdBy}
-                    </span>
+                    </div>
                   )}
                 </td>
               </tr>
