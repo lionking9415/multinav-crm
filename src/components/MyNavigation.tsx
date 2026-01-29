@@ -229,7 +229,7 @@ const SatisfactionSurvey = ({ clientId }: { clientId: string }) => {
     const [responses, setResponses] = useState<Record<string, number>>({});
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [submissionCount, setSubmissionCount] = useState(0);
 
     const questions = [
         { id: 'q1', text: 'Staff showed respect for how you were feeling.' },
@@ -245,25 +245,7 @@ const SatisfactionSurvey = ({ clientId }: { clientId: string }) => {
         { value: 5, emoji: '😄', label: 'Strongly Agree', color: 'bg-green-500', hoverColor: 'hover:bg-green-400', selectedRing: 'ring-green-500' },
     ];
 
-    // Check if user already submitted a survey
-    useEffect(() => {
-        const checkExistingSurvey = async () => {
-            try {
-                const existing = await surveyService.getByClientId(clientId);
-                if (existing) {
-                    setIsSubmitted(true);
-                }
-            } catch (error) {
-                console.log('[Survey] No existing survey found or error:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        checkExistingSurvey();
-    }, [clientId]);
-
     const handleRatingChange = (questionId: string, value: number) => {
-        if (isSubmitted) return;
         setResponses(prev => ({ ...prev, [questionId]: value }));
     };
 
@@ -288,27 +270,21 @@ const SatisfactionSurvey = ({ clientId }: { clientId: string }) => {
             console.log('[Survey] Saved to database:', surveyResponse.id);
             
             setIsSubmitted(true);
+            setSubmissionCount(prev => prev + 1);
         } catch (error) {
             console.error('[Survey] Failed to submit:', error);
-            // Still mark as submitted locally
-            setIsSubmitted(true);
+            alert('Failed to submit survey. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const allAnswered = Object.keys(responses).length === questions.length;
+    const handleSubmitAnother = () => {
+        setResponses({});
+        setIsSubmitted(false);
+    };
 
-    if (isLoading) {
-        return (
-            <div className="mt-6 p-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Loading survey...</span>
-                </div>
-            </div>
-        );
-    }
+    const allAnswered = Object.keys(responses).length === questions.length;
 
     if (isSubmitted) {
         return (
@@ -318,9 +294,20 @@ const SatisfactionSurvey = ({ clientId }: { clientId: string }) => {
                     <h3 className="text-lg font-semibold text-lime-green-700 dark:text-lime-green-300 mb-2">
                         Thank you for your feedback!
                     </h3>
-                    <p className="text-sm text-lime-green-600 dark:text-lime-green-400">
+                    <p className="text-sm text-lime-green-600 dark:text-lime-green-400 mb-4">
                         Your responses help us improve our services.
                     </p>
+                    {submissionCount > 0 && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                            You've submitted {submissionCount} survey{submissionCount > 1 ? 's' : ''} this session
+                        </p>
+                    )}
+                    <button
+                        onClick={handleSubmitAnother}
+                        className="px-4 py-2 bg-white dark:bg-gray-700 border border-lime-green-300 dark:border-lime-green-600 text-lime-green-700 dark:text-lime-green-300 rounded-lg hover:bg-lime-green-50 dark:hover:bg-lime-green-900/30 transition-colors text-sm font-medium"
+                    >
+                        Submit Another Survey
+                    </button>
                 </div>
             </div>
         );
