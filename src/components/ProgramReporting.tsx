@@ -49,6 +49,8 @@ interface ReportData {
     internalCount: number;
     externalCount: number;
     topAgencies: { name: string; count: number }[];
+    insights: string[];  // Narrative insights about engagement activities
+    highlights: string;  // Key highlight paragraph
   };
   aiInsights: AiInsight[];
 }
@@ -257,7 +259,9 @@ const ProgramReporting: React.FC<{
         totalEngagements: 0,
         internalCount: 0,
         externalCount: 0,
-        topAgencies: [] as { name: string; count: number }[]
+        topAgencies: [] as { name: string; count: number }[],
+        insights: [] as string[],
+        highlights: ''
     };
 
     try {
@@ -277,11 +281,48 @@ const ProgramReporting: React.FC<{
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 5);
 
+            // Count unique agencies
+            const uniqueAgencies = Object.keys(agencyCounts).length;
+            
+            // Generate analytical insights
+            const insights: string[] = [];
+            
+            // Overall engagement insight
+            const avgPerMonth = (engagements.length / 6).toFixed(1);
+            insights.push(`During this reporting period, the team conducted ${engagements.length} community engagement activities, averaging approximately ${avgPerMonth} engagements per month.`);
+            
+            // Internal vs External insight
+            const internalPercent = Math.round((internalCount / engagements.length) * 100);
+            const externalPercent = 100 - internalPercent;
+            if (internalCount > externalCount) {
+                insights.push(`The majority of engagements (${internalPercent}%) were with internal agencies, indicating strong cross-departmental collaboration.`);
+            } else if (externalCount > internalCount) {
+                insights.push(`External partnerships dominated this period with ${externalPercent}% of engagements, demonstrating active community outreach and stakeholder relationships.`);
+            } else {
+                insights.push(`Engagements were evenly balanced between internal (${internalPercent}%) and external (${externalPercent}%) agencies, showing a well-rounded engagement approach.`);
+            }
+            
+            // Agency diversity insight
+            insights.push(`The team engaged with ${uniqueAgencies} unique agencies/organizations, ${uniqueAgencies > 10 ? 'demonstrating broad community reach and diverse partnerships.' : uniqueAgencies > 5 ? 'building a solid network of key stakeholders.' : 'focusing on developing deeper relationships with core partners.'}`);
+            
+            // Top agency insight
+            if (topAgencies.length > 0) {
+                const topAgency = topAgencies[0];
+                if (topAgency.count > 1) {
+                    insights.push(`${topAgency.name} was the most frequently engaged partner with ${topAgency.count} meetings, indicating an ongoing collaborative relationship.`);
+                }
+            }
+            
+            // Generate highlights paragraph
+            const highlights = `Community engagement activities during this 6-month period reflect ${engagements.length > 20 ? 'a highly active' : engagements.length > 10 ? 'a productive' : 'a developing'} outreach program. ${externalCount > internalCount ? 'External community partnerships were prioritized, strengthening ties with local organizations and service providers.' : 'Internal collaboration was emphasized, ensuring coordinated service delivery across departments.'} ${uniqueAgencies > 1 ? `Relationships were maintained with ${uniqueAgencies} different organizations, creating a robust support network for clients.` : ''}`;
+
             engagementSummary = {
                 totalEngagements: engagements.length,
                 internalCount,
                 externalCount,
-                topAgencies
+                topAgencies,
+                insights,
+                highlights
             };
         }
     } catch (error) {
@@ -445,29 +486,48 @@ const ProgramReporting: React.FC<{
         });
     }
 
-    // Community Engagement Section
+    // Community Engagement Analysis Section
     if (reportData.engagementSummary.totalEngagements > 0) {
-        addSection('Community Engagement Summary', () => {
-            (doc as any).autoTable({
-                startY: y, theme: 'striped',
-                head: [['Engagement Metric', 'Count']],
-                body: [
-                    ['Total Engagements', reportData.engagementSummary.totalEngagements],
-                    ['Internal Agency Meetings', reportData.engagementSummary.internalCount],
-                    ['External Agency Meetings', reportData.engagementSummary.externalCount]
-                ],
-            });
-            y = (doc as any).lastAutoTable.finalY + 5;
+        addSection('Community Engagement Analysis', () => {
+            // Stats line
+            doc.setFontSize(10);
+            doc.setTextColor(80);
+            doc.text(`Total: ${reportData.engagementSummary.totalEngagements} engagements | Internal: ${reportData.engagementSummary.internalCount} | External: ${reportData.engagementSummary.externalCount}`, 14, y);
+            y += 8;
             
-            if (reportData.engagementSummary.topAgencies.length > 0) {
-                doc.text('Top Engaged Agencies:', 14, y);
-                y += 5;
-                (doc as any).autoTable({
-                    startY: y, theme: 'striped',
-                    head: [['Agency Name', 'Meetings']],
-                    body: reportData.engagementSummary.topAgencies.map(a => [a.name, a.count]),
+            // Highlights
+            if (reportData.engagementSummary.highlights) {
+                doc.setFontSize(10);
+                doc.setTextColor(60);
+                const highlightLines = doc.splitTextToSize(reportData.engagementSummary.highlights, 180);
+                doc.text(highlightLines, 14, y);
+                y += highlightLines.length * 5 + 5;
+            }
+            
+            // Key Insights
+            if (reportData.engagementSummary.insights.length > 0) {
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Key Insights:', 14, y);
+                y += 6;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                
+                reportData.engagementSummary.insights.forEach((insight, idx) => {
+                    if (y > 270) { doc.addPage(); y = 20; }
+                    const insightLines = doc.splitTextToSize(`${idx + 1}. ${insight}`, 175);
+                    doc.text(insightLines, 18, y);
+                    y += insightLines.length * 5 + 3;
                 });
-                y = (doc as any).lastAutoTable.finalY;
+            }
+            
+            // Key Partners
+            if (reportData.engagementSummary.topAgencies.length > 0) {
+                y += 3;
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                const partners = reportData.engagementSummary.topAgencies.slice(0, 5).map(a => `${a.name} (${a.count})`).join(', ');
+                doc.text(`Key Partners: ${partners}`, 14, y);
             }
         });
     }
@@ -610,22 +670,41 @@ const ProgramReporting: React.FC<{
         content += `<p><em>No survey responses were received during this reporting period.</em></p>`;
       }
 
-      // Community Engagement Section
-      content += `<h2>Community Engagement Summary</h2>`;
+      // Community Engagement Analysis Section
+      content += `<h2>Community Engagement Analysis</h2>`;
       if (reportData.engagementSummary.totalEngagements > 0) {
-        content += `<div class="summary-box">
-          <p><strong>Total Engagements:</strong> ${reportData.engagementSummary.totalEngagements}</p>
-          <p><strong>Internal Agency Meetings:</strong> ${reportData.engagementSummary.internalCount}</p>
-          <p><strong>External Agency Meetings:</strong> ${reportData.engagementSummary.externalCount}</p>
+        // Stats summary
+        content += `<div class="highlight" style="display: flex; gap: 30px; padding: 15px;">
+          <div><span style="font-size: 24pt; font-weight: bold; color: #84cc16;">${reportData.engagementSummary.totalEngagements}</span><br><small>Total Engagements</small></div>
+          <div><span style="font-size: 18pt; font-weight: bold; color: #16a34a;">${reportData.engagementSummary.internalCount}</span><br><small>Internal</small></div>
+          <div><span style="font-size: 18pt; font-weight: bold; color: #2563eb;">${reportData.engagementSummary.externalCount}</span><br><small>External</small></div>
         </div>`;
         
-        if (reportData.engagementSummary.topAgencies.length > 0) {
-          content += `<h3>Top Engaged Agencies</h3>`;
-          content += `<table><tr><th>Agency Name</th><th>Meetings</th></tr>`;
-          reportData.engagementSummary.topAgencies.forEach(agency => {
-            content += `<tr><td>${agency.name}</td><td>${agency.count}</td></tr>`;
+        // Highlights paragraph
+        if (reportData.engagementSummary.highlights) {
+          content += `<div class="recommendation">
+            <strong>💡 Summary:</strong> ${reportData.engagementSummary.highlights}
+          </div>`;
+        }
+        
+        // Key Insights
+        if (reportData.engagementSummary.insights.length > 0) {
+          content += `<h3>Key Insights</h3>`;
+          content += `<div style="margin-left: 10px;">`;
+          reportData.engagementSummary.insights.forEach((insight, idx) => {
+            content += `<p style="margin-bottom: 10px; padding-left: 20px; border-left: 3px solid #84cc16;">
+              <strong>${idx + 1}.</strong> ${insight}
+            </p>`;
           });
-          content += `</table>`;
+          content += `</div>`;
+        }
+        
+        // Key Partners
+        if (reportData.engagementSummary.topAgencies.length > 0) {
+          const partners = reportData.engagementSummary.topAgencies.slice(0, 5).map(a => `<strong>${a.name}</strong> (${a.count})`).join(' • ');
+          content += `<p style="margin-top: 15px; padding: 10px; background-color: #f8fafc; border-radius: 5px;">
+            <strong>Key Partners:</strong> ${partners}
+          </p>`;
         }
       } else {
         content += `<p><em>No community engagements were recorded during this reporting period.</em></p>`;
@@ -901,49 +980,78 @@ const ProgramReporting: React.FC<{
                     )}
                 </div>
 
-                {/* Community Engagement Summary */}
+                {/* Community Engagement Analysis */}
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
                     <h4 className="font-semibold text-md text-lime-green-600 dark:text-lime-green-400 mb-4 flex items-center">
-                        <Handshake className="mr-2 h-5 w-5"/> Community Engagement Summary
+                        <Handshake className="mr-2 h-5 w-5"/> Community Engagement Analysis
                     </h4>
                     
                     {reportData.engagementSummary.totalEngagements > 0 ? (
                         <div className="space-y-4">
-                            {/* Engagement Stats */}
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="text-center p-3 bg-lime-green-50 dark:bg-lime-green-900/30 rounded-lg">
-                                    <p className="text-2xl font-bold text-lime-green-600 dark:text-lime-green-400">{reportData.engagementSummary.totalEngagements}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Total Engagements</p>
+                            {/* Quick Stats Row */}
+                            <div className="flex items-center gap-6 p-3 bg-gradient-to-r from-lime-green-50 to-blue-50 dark:from-lime-green-900/20 dark:to-blue-900/20 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl font-bold text-lime-green-600 dark:text-lime-green-400">{reportData.engagementSummary.totalEngagements}</span>
+                                    <span className="text-xs text-gray-600 dark:text-gray-400">Total<br/>Engagements</span>
                                 </div>
-                                <div className="text-center p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{reportData.engagementSummary.internalCount}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Internal</p>
+                                <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xl font-semibold text-green-600 dark:text-green-400">{reportData.engagementSummary.internalCount}</span>
+                                    <span className="text-xs text-gray-600 dark:text-gray-400">Internal</span>
                                 </div>
-                                <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{reportData.engagementSummary.externalCount}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">External</p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xl font-semibold text-blue-600 dark:text-blue-400">{reportData.engagementSummary.externalCount}</span>
+                                    <span className="text-xs text-gray-600 dark:text-gray-400">External</span>
                                 </div>
                             </div>
                             
-                            {/* Top Agencies */}
+                            {/* Highlights Paragraph */}
+                            {reportData.engagementSummary.highlights && (
+                                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 rounded-r-lg">
+                                    <div className="flex items-start gap-2">
+                                        <Lightbulb className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                            {reportData.engagementSummary.highlights}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Analytical Insights */}
+                            <div className="space-y-3">
+                                <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                    <Bot className="w-4 h-4 text-lime-green-500" /> Key Insights
+                                </h5>
+                                {reportData.engagementSummary.insights.map((insight, idx) => (
+                                    <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <div className="w-6 h-6 rounded-full bg-lime-green-100 dark:bg-lime-green-900/50 flex items-center justify-center flex-shrink-0">
+                                            <span className="text-xs font-bold text-lime-green-600 dark:text-lime-green-400">{idx + 1}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{insight}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            {/* Top Partners - Compact */}
                             {reportData.engagementSummary.topAgencies.length > 0 && (
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Top Engaged Agencies</p>
-                                    <div className="space-y-2">
-                                        {reportData.engagementSummary.topAgencies.map((agency, idx) => (
-                                            <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                                                <span className="text-sm">{agency.name}</span>
-                                                <span className="text-sm font-semibold bg-lime-green-100 dark:bg-lime-green-900/50 text-lime-green-700 dark:text-lime-green-300 px-2 py-1 rounded">{agency.count} meetings</span>
-                                            </div>
+                                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">KEY PARTNERS THIS PERIOD</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {reportData.engagementSummary.topAgencies.slice(0, 5).map((agency, idx) => (
+                                            <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">
+                                                <span className="font-medium">{agency.name}</span>
+                                                <span className="text-lime-green-600 dark:text-lime-green-400">({agency.count})</span>
+                                            </span>
                                         ))}
                                     </div>
                                 </div>
                             )}
                         </div>
                     ) : (
-                        <div className="text-center p-4 text-gray-400">
-                            <Handshake className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                            <p className="text-sm">No engagements recorded for this period</p>
+                        <div className="text-center p-6 text-gray-400">
+                            <Handshake className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                            <p className="text-sm">No community engagements recorded for this period</p>
+                            <p className="text-xs mt-1">Engagement activities will be analyzed here once recorded</p>
                         </div>
                     )}
                 </div>
