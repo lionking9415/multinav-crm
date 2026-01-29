@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import type { Client, HealthActivity, WorkforceData, SurveyResponse } from '../types';
 import Card from './Card';
-import { Zap, Calendar, FileDown, AlertTriangle, Bot, Lightbulb, FileText, Smile } from 'lucide-react';
+import { Zap, Calendar, FileDown, AlertTriangle, Bot, Lightbulb, FileText, Smile, Handshake } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { generateReportInsights } from '../services/geminiService';
-import { surveyService } from '../services/supabaseService';
+import { surveyService, communityEngagementService } from '../services/supabaseService';
 
 interface AiInsight {
   title: string;
@@ -43,6 +43,12 @@ interface ReportData {
     q3Average: number;
     overallAverage: number;
     ratingDistribution: { rating: number; count: number }[];
+  };
+  engagementSummary: {
+    totalEngagements: number;
+    internalCount: number;
+    externalCount: number;
+    topAgencies: { name: string; count: number }[];
   };
   aiInsights: AiInsight[];
 }
@@ -246,6 +252,42 @@ const ProgramReporting: React.FC<{
         console.log('[ProgramReporting] Could not load survey data:', error);
     }
 
+    // Load community engagement data for the period
+    let engagementSummary = {
+        totalEngagements: 0,
+        internalCount: 0,
+        externalCount: 0,
+        topAgencies: [] as { name: string; count: number }[]
+    };
+
+    try {
+        const engagements = await communityEngagementService.getAll(startDate, endDate);
+        if (engagements.length > 0) {
+            const internalCount = engagements.filter(e => e.agencyType === 'internal').length;
+            const externalCount = engagements.filter(e => e.agencyType === 'external').length;
+            
+            // Get top agencies by frequency
+            const agencyCounts = engagements.reduce((acc: Record<string, number>, e) => {
+                acc[e.agencyName] = (acc[e.agencyName] || 0) + 1;
+                return acc;
+            }, {});
+            
+            const topAgencies = Object.entries(agencyCounts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+
+            engagementSummary = {
+                totalEngagements: engagements.length,
+                internalCount,
+                externalCount,
+                topAgencies
+            };
+        }
+    } catch (error) {
+        console.log('[ProgramReporting] Could not load engagement data:', error);
+    }
+
     try {
         const aiInsights = await generateReportInsights(clientSummary, activitySummary, workforceSummary, { start: startDate, end: endDate });
         setReportData({
@@ -254,6 +296,7 @@ const ProgramReporting: React.FC<{
             activitySummary,
             workforceSummary,
             surveySummary,
+            engagementSummary,
             aiInsights
         });
     } catch (e) {
@@ -402,6 +445,33 @@ const ProgramReporting: React.FC<{
         });
     }
 
+    // Community Engagement Section
+    if (reportData.engagementSummary.totalEngagements > 0) {
+        addSection('Community Engagement Summary', () => {
+            (doc as any).autoTable({
+                startY: y, theme: 'striped',
+                head: [['Engagement Metric', 'Count']],
+                body: [
+                    ['Total Engagements', reportData.engagementSummary.totalEngagements],
+                    ['Internal Agency Meetings', reportData.engagementSummary.internalCount],
+                    ['External Agency Meetings', reportData.engagementSummary.externalCount]
+                ],
+            });
+            y = (doc as any).lastAutoTable.finalY + 5;
+            
+            if (reportData.engagementSummary.topAgencies.length > 0) {
+                doc.text('Top Engaged Agencies:', 14, y);
+                y += 5;
+                (doc as any).autoTable({
+                    startY: y, theme: 'striped',
+                    head: [['Agency Name', 'Meetings']],
+                    body: reportData.engagementSummary.topAgencies.map(a => [a.name, a.count]),
+                });
+                y = (doc as any).lastAutoTable.finalY;
+            }
+        });
+    }
+
     doc.save(`Program_Report_${startDate}_to_${endDate}.pdf`);
   };
 
@@ -538,6 +608,27 @@ const ProgramReporting: React.FC<{
         ]);
       } else {
         content += `<p><em>No survey responses were received during this reporting period.</em></p>`;
+      }
+
+      // Community Engagement Section
+      content += `<h2>Community Engagement Summary</h2>`;
+      if (reportData.engagementSummary.totalEngagements > 0) {
+        content += `<div class="summary-box">
+          <p><strong>Total Engagements:</strong> ${reportData.engagementSummary.totalEngagements}</p>
+          <p><strong>Internal Agency Meetings:</strong> ${reportData.engagementSummary.internalCount}</p>
+          <p><strong>External Agency Meetings:</strong> ${reportData.engagementSummary.externalCount}</p>
+        </div>`;
+        
+        if (reportData.engagementSummary.topAgencies.length > 0) {
+          content += `<h3>Top Engaged Agencies</h3>`;
+          content += `<table><tr><th>Agency Name</th><th>Meetings</th></tr>`;
+          reportData.engagementSummary.topAgencies.forEach(agency => {
+            content += `<tr><td>${agency.name}</td><td>${agency.count}</td></tr>`;
+          });
+          content += `</table>`;
+        }
+      } else {
+        content += `<p><em>No community engagements were recorded during this reporting period.</em></p>`;
       }
 
       // Footer
@@ -806,6 +897,53 @@ const ProgramReporting: React.FC<{
                         <div className="text-center py-6 text-gray-500 dark:text-gray-400">
                             <Smile className="w-10 h-10 mx-auto mb-2 opacity-50" />
                             <p className="text-sm">No survey responses for this period</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Community Engagement Summary */}
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <h4 className="font-semibold text-md text-lime-green-600 dark:text-lime-green-400 mb-4 flex items-center">
+                        <Handshake className="mr-2 h-5 w-5"/> Community Engagement Summary
+                    </h4>
+                    
+                    {reportData.engagementSummary.totalEngagements > 0 ? (
+                        <div className="space-y-4">
+                            {/* Engagement Stats */}
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="text-center p-3 bg-lime-green-50 dark:bg-lime-green-900/30 rounded-lg">
+                                    <p className="text-2xl font-bold text-lime-green-600 dark:text-lime-green-400">{reportData.engagementSummary.totalEngagements}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Total Engagements</p>
+                                </div>
+                                <div className="text-center p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{reportData.engagementSummary.internalCount}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Internal</p>
+                                </div>
+                                <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{reportData.engagementSummary.externalCount}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">External</p>
+                                </div>
+                            </div>
+                            
+                            {/* Top Agencies */}
+                            {reportData.engagementSummary.topAgencies.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Top Engaged Agencies</p>
+                                    <div className="space-y-2">
+                                        {reportData.engagementSummary.topAgencies.map((agency, idx) => (
+                                            <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                                <span className="text-sm">{agency.name}</span>
+                                                <span className="text-sm font-semibold bg-lime-green-100 dark:bg-lime-green-900/50 text-lime-green-700 dark:text-lime-green-300 px-2 py-1 rounded">{agency.count} meetings</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="text-center p-4 text-gray-400">
+                            <Handshake className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                            <p className="text-sm">No engagements recorded for this period</p>
                         </div>
                     )}
                 </div>

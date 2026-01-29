@@ -886,11 +886,20 @@ export const activityLogService = {
 
 // Community Engagement Functions
 export const communityEngagementService = {
-  async getAll(): Promise<CommunityEngagement[]> {
-    const { data, error } = await supabase
+  async getAll(startDate?: string, endDate?: string): Promise<CommunityEngagement[]> {
+    let query = supabase
       .from('community_engagements')
       .select('*')
       .order('date_of_meeting', { ascending: false });
+    
+    if (startDate) {
+      query = query.gte('date_of_meeting', startDate);
+    }
+    if (endDate) {
+      query = query.lte('date_of_meeting', endDate);
+    }
+    
+    const { data, error } = await query;
     
     if (error) throw error;
     
