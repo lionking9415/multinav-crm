@@ -166,32 +166,67 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
   };
 
   const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    const tableHead = [["Date", "Type", "Agency Name", "Staff Present", "Notes"]];
+    // Use landscape orientation for better layout
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Title
+    doc.setFontSize(20);
+    doc.setTextColor(40);
+    doc.text("Community Engagement Register", pageWidth / 2, 15, { align: 'center' });
+    
+    // Subtitle with date range
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleDateString()} | Total Records: ${filteredEngagements.length}`, pageWidth / 2, 22, { align: 'center' });
+
+    const tableHead = [["Date", "Type", "Agency Name", "Staff Present", "Meeting Notes"]];
     const tableBody = filteredEngagements.map(e => [
       e.dateOfMeeting ? new Date(e.dateOfMeeting).toLocaleDateString() : 'N/A',
       e.agencyType === 'internal' ? 'Internal' : 'External',
       e.agencyName || 'N/A',
       e.staffPresent || 'N/A',
-      e.meetingNotes.length > 40 ? e.meetingNotes.substring(0, 40) + '...' : e.meetingNotes || 'N/A'
+      e.meetingNotes || 'N/A'
     ]);
 
     (doc as any).autoTable({
       head: tableHead,
       body: tableBody,
-      startY: 20,
-      styles: { font: "helvetica", fontSize: 10 },
-      headStyles: { fillColor: [132, 204, 22] }, // lime-green-500
+      startY: 28,
+      styles: { 
+        font: "helvetica", 
+        fontSize: 9,
+        cellPadding: 4,
+        overflow: 'linebreak',
+        valign: 'top'
+      },
+      headStyles: { 
+        fillColor: [132, 204, 22], // lime-green-500
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
       columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 45 },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 65 }
+        0: { cellWidth: 25, halign: 'center' },  // Date
+        1: { cellWidth: 22, halign: 'center' },  // Type
+        2: { cellWidth: 55 },                     // Agency Name
+        3: { cellWidth: 50 },                     // Staff Present
+        4: { cellWidth: 'auto' }                  // Meeting Notes - takes remaining space
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
       },
       didDrawPage: (data: any) => {
-        doc.setFontSize(18);
-        doc.setTextColor(40);
-        doc.text("Community Engagement Register", data.settings.margin.left, 15);
+        // Footer with page numbers
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(
+          `Page ${data.pageNumber} of ${pageCount}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
       }
     });
 
