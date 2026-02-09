@@ -24,6 +24,7 @@ CREATE TABLE clients (
     postcode VARCHAR(10), -- Postcode
     region VARCHAR(50), -- Perth North or Perth South
     password_hash VARCHAR(255), -- Store hashed password
+    assigned_staff_id VARCHAR(255), -- User ID of assigned staff member
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

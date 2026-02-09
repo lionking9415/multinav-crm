@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import type { Client } from '../types';
+import type { Client, User } from '../types';
 import { clientService } from '../services/supabaseService';
 import Card from './Card';
 import ClientForm from './ClientForm';
@@ -12,9 +12,10 @@ import 'jspdf-autotable';
 interface ClientDemographicsProps {
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
+  users: User[];
 }
 
-const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setClients }) => {
+const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setClients, users }) => {
   const [view, setView] = useState<'list' | 'form'>('list');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,7 +82,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
   );
 
   const handleDownloadCSV = () => {
-    const headers = ["ID", "Full Name", "Sex", "Date of Birth", "Age", "Ethnicity", "Country of Birth", "Languages", "Referral Source", "Referral Date"];
+    const headers = ["ID", "Full Name", "Sex", "Date of Birth", "Age", "Ethnicity", "Country of Birth", "Languages", "Referral Source", "Referral Date", "Assigned Staff"];
     const csvRows = [
         headers.join(','),
         ...filteredClients.map(c => [
@@ -94,7 +95,8 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
             `"${c.countryOfBirth}"`,
             `"${c.languages.join('; ')}"`,
             `"${c.referralSource}"`,
-            `"${c.referralDate}"`
+            `"${c.referralDate}"`,
+            `"${getAssignedStaffName(c.assignedStaffId)}"`
         ].join(','))
     ];
     const csvContent = csvRows.join('\n');
@@ -111,14 +113,15 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
 
   const handleDownloadPDF = () => {
       const doc = new jsPDF();
-      const tableHead = [["ID", "Full Name", "Age", "Ethnicity", "Referral Source", "Referral Date"]];
+      const tableHead = [["ID", "Full Name", "Age", "Ethnicity", "Referral Source", "Referral Date", "Assigned Staff"]];
       const tableBody = filteredClients.map(c => [
           c.id,
           c.fullName,
           c.age,
           c.ethnicity,
           c.referralSource,
-          c.referralDate ? new Date(c.referralDate).toLocaleDateString() : 'N/A'
+          c.referralDate ? new Date(c.referralDate).toLocaleDateString() : 'N/A',
+          getAssignedStaffName(c.assignedStaffId)
       ]);
 
       (doc as any).autoTable({
@@ -137,10 +140,17 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
       doc.save('clients.pdf');
   };
 
+  const getAssignedStaffName = (assignedStaffId?: string) => {
+    if (!assignedStaffId) return '—';
+    const user = users.find(u => u.id === assignedStaffId);
+    return user ? (user.fullName || user.email) : assignedStaffId;
+  };
+
   if (view === 'form') {
     return (
       <ClientForm
         initialClient={selectedClient}
+        users={users}
         onSave={handleSave}
         onCancel={handleCancel}
       />
@@ -200,6 +210,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
                     <th scope="col" className="px-6 py-3">Ethnicity</th>
                     <th scope="col" className="px-6 py-3">Languages</th>
                     <th scope="col" className="px-6 py-3">Referral Date</th>
+                    <th scope="col" className="px-6 py-3">Assigned Staff</th>
                     <th scope="col" className="px-6 py-3 text-right">Actions</th>
                 </tr>
             </thead>
@@ -216,6 +227,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
                     <td className="px-6 py-4">{client.ethnicity}</td>
                     <td className="px-6 py-4">{client.languages.join(', ')}</td>
                     <td className="px-6 py-4">{client.referralDate ? new Date(client.referralDate).toLocaleDateString() : 'N/A'}</td>
+                    <td className="px-6 py-4">{getAssignedStaffName(client.assignedStaffId)}</td>
                     <td className="px-6 py-4 text-right space-x-1">
                     <button onClick={() => handleEdit(client)} className="p-2 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <Pencil className="h-5 w-5" />
@@ -227,7 +239,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
                 </tr>
                 )) : (
                     <tr>
-                        <td colSpan={7} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                        <td colSpan={8} className="text-center py-10 text-gray-500 dark:text-gray-400">
                            {searchQuery ? 'No clients match your search.' : 'No clients found. Add a new client to get started.'}
                         </td>
                     </tr>

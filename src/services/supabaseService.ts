@@ -47,7 +47,8 @@ export const clientService = {
       address: client.address,
       postcode: client.postcode,
       region: client.region,
-      password: client.password_hash || '' // Return password for staff editing
+      password: client.password_hash || '', // Return password for staff editing
+      assignedStaffId: client.assigned_staff_id || undefined
     }));
   },
 
@@ -68,7 +69,8 @@ export const clientService = {
         address: client.address,
         postcode: client.postcode,
         region: client.region,
-        password_hash: client.password ? await hashPassword(client.password) : null
+        password_hash: client.password ? await hashPassword(client.password) : null,
+        assigned_staff_id: client.assignedStaffId || null
       })
       .select()
       .single();
@@ -96,6 +98,7 @@ export const clientService = {
     if (client.address !== undefined) updateData.address = client.address;
     if (client.postcode !== undefined) updateData.postcode = client.postcode;
     if (client.region !== undefined) updateData.region = client.region;
+    if (client.assignedStaffId !== undefined) updateData.assigned_staff_id = client.assignedStaffId || null;
     // Update password if provided (non-empty string)
     if (client.password && client.password.trim() !== '') {
       updateData.password_hash = client.password;
@@ -124,7 +127,8 @@ export const clientService = {
       referralDate: data.referral_date,
       address: data.address,
       postcode: data.postcode,
-      region: data.region
+      region: data.region,
+      assignedStaffId: data.assigned_staff_id || undefined
     };
   },
 
@@ -202,7 +206,8 @@ export const clientService = {
       referralDate: data.referral_date,
       address: data.address,
       postcode: data.postcode,
-      region: data.region
+      region: data.region,
+      assignedStaffId: data.assigned_staff_id || undefined
     };
   }
 };

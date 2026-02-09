@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import type { Client } from '../types';
+import type { Client, User } from '../types';
 import Card from './Card';
 import { SEX_OPTIONS, COUNTRY_OPTIONS, ETHNICITY_OPTIONS, LANGUAGE_OPTIONS, REFERRAL_SOURCE_OPTIONS } from '../constants';
 import MultiSelect from './MultiSelect';
 
 interface ClientFormProps {
   initialClient: Client | null;
+  users: User[];
   onSave: (client: Client) => void;
   onCancel: () => void;
 }
 
-const ClientForm: React.FC<ClientFormProps> = ({ initialClient, onSave, onCancel }) => {
+const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, onCancel }) => {
   const [client, setClient] = useState<Client>({
     id: initialClient?.id || '',
     fullName: initialClient?.fullName || '',
@@ -26,6 +27,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, onSave, onCancel
     postcode: initialClient?.postcode || '',
     region: initialClient?.region || '',
     password: initialClient?.password || '',
+    assignedStaffId: initialClient?.assignedStaffId || '',
   });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -212,6 +214,26 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, onSave, onCancel
               <option value="Perth South">Perth South</option>
             </select>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Select the primary region for this client</p>
+          </div>
+
+          {/* Assigned Staff */}
+          <div>
+            <label htmlFor="assignedStaffId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assigned Staff</label>
+            <select
+              id="assignedStaffId"
+              name="assignedStaffId"
+              value={client.assignedStaffId || ''}
+              onChange={(e) => setClient({ ...client, assignedStaffId: e.target.value || undefined })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            >
+              <option value="">No staff assigned</option>
+              {users.filter(u => u.isActive).map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.fullName || user.email} {user.role ? `(${user.role})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Assign a staff member already registered in the system</p>
           </div>
 
            {/* Password */}

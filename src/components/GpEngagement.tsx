@@ -2,7 +2,8 @@ import React, { useState, Fragment } from 'react';
 import type { GpPractice } from '../types';
 import Card from './Card';
 import { scanForGps } from '../services/geminiService';
-import { Search, Plus, Pencil, Trash2, Globe, Phone, MapPin, ServerCrash, Bot } from 'lucide-react';
+import { gpPracticeService } from '../services/supabaseService';
+import { Search, Plus, Pencil, Trash2, Globe, Phone, MapPin, ServerCrash, Bot, Loader2 } from 'lucide-react';
 
 interface GpEngagementProps {
   practices: GpPractice[];
@@ -13,6 +14,8 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
     const [scanQuery, setScanQuery] = useState('GPs in Perth with interest in multicultural patients');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentPractice, setCurrentPractice] = useState<GpPractice | null>(null);
@@ -22,52 +25,88 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
         setError(null);
         try {
             const results = await scanForGps(scanQuery);
-            setPractices(prev => {
-                const existingNames = new Set(prev.map(p => p.name.toLowerCase()));
-                const newPractices = results
-                    .filter(res => res.name && !existingNames.has(res.name.toLowerCase()))
-                    .map(res => ({
-                        ...res,
-                        id: `gp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                        notes: 'Scanned from web.',
-                    }));
-                
-                if (newPractices.length === 0) {
-                   alert("Scan complete. No new practices were found matching the query.");
-                }
+            const existingNames = new Set(practices.map(p => p.name.toLowerCase()));
+            const newPractices = results
+                .filter(res => res.name && !existingNames.has(res.name.toLowerCase()))
+                .map(res => ({
+                    ...res,
+                    id: `gp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                    address: res.address || '',
+                    notes: 'Scanned from web.',
+                }));
 
-                return [...prev, ...newPractices];
-            });
+            if (newPractices.length === 0) {
+                alert("Scan complete. No new practices were found matching the query.");
+            } else {
+                for (const p of newPractices) {
+                    try {
+                        await gpPracticeService.create(p);
+                    } catch (e) {
+                        console.error('Failed to save scanned practice:', p.name, e);
+                    }
+                }
+                setPractices(prev => [...prev, ...newPractices]);
+            }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'An unknown error occurred during the scan.');
+            const msg = err instanceof Error ? err.message : 'An unknown error occurred during the scan.';
+            setError(msg);
+            if (!import.meta.env.VITE_GEMINI_API_KEY && !import.meta.env.VITE_API_KEY) {
+                setError('API key not set. Add VITE_GEMINI_API_KEY to .env for AI web scan.');
+            }
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleOpenModal = (practice: GpPractice | null = null) => {
+        setSaveError(null);
         setCurrentPractice(practice ? { ...practice } : { id: '', name: '', address: '', phone: '', website: '', notes: '' });
         setIsModalOpen(true);
     };
 
-    const handleSave = () => {
-        if (!currentPractice || !currentPractice.name) {
+    const handleSave = async () => {
+        if (!currentPractice || !currentPractice.name?.trim()) {
             alert("Practice name is required.");
             return;
-        };
-        
-        if (currentPractice.id) { // Editing existing
-            setPractices(practices.map(p => p.id === currentPractice.id ? currentPractice : p));
-        } else { // Adding new
-            setPractices([...practices, { ...currentPractice, id: `gp-${Date.now()}` }]);
         }
-        setIsModalOpen(false);
-        setCurrentPractice(null);
+        setIsSaving(true);
+        setSaveError(null);
+        const practice = {
+            ...currentPractice,
+            name: currentPractice.name.trim(),
+            address: currentPractice.address ?? '',
+            phone: currentPractice.phone ?? '',
+            website: currentPractice.website ?? '',
+            notes: currentPractice.notes ?? '',
+        };
+        try {
+            if (practice.id) {
+                await gpPracticeService.update(practice.id, practice);
+                setPractices(prev => prev.map(p => p.id === practice.id ? practice : p));
+            } else {
+                const id = `gp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                const toCreate = { ...practice, id };
+                await gpPracticeService.create(toCreate);
+                setPractices(prev => [...prev, toCreate]);
+            }
+            setIsModalOpen(false);
+            setCurrentPractice(null);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Failed to save practice.';
+            setSaveError(msg);
+            alert(msg);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleDelete = (practiceId: string) => {
-        if (window.confirm('Are you sure you want to delete this practice from the directory?')) {
-            setPractices(practices.filter(p => p.id !== practiceId));
+    const handleDelete = async (practiceId: string) => {
+        if (!window.confirm('Are you sure you want to delete this practice from the directory?')) return;
+        try {
+            await gpPracticeService.delete(practiceId);
+            setPractices(prev => prev.filter(p => p.id !== practiceId));
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to delete practice.');
         }
     };
 
@@ -79,8 +118,13 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
                         {currentPractice?.id ? 'Edit Practice Details' : 'Add New Practice'}
                     </h3>
                 </div>
+                {saveError && (
+                    <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-700 dark:text-red-300">
+                        {saveError}
+                    </div>
+                )}
                 <div className="p-6 space-y-4">
-                    <InputField label="Practice Name" name="name" value={currentPractice?.name || ''} />
+                    <InputField label="Practice Name (required)" name="name" value={currentPractice?.name || ''} />
                     <InputField label="Address" name="address" value={currentPractice?.address || ''} />
                     <InputField label="Phone" name="phone" value={currentPractice?.phone || ''} />
                     <InputField label="Website" name="website" value={currentPractice?.website || ''} />
@@ -96,8 +140,10 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
                     </div>
                 </div>
                 <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3">
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancel</button>
-                    <button type="button" onClick={handleSave} className="px-4 py-2 text-sm font-medium text-white bg-lime-green-500 border border-transparent rounded-md shadow-sm hover:bg-lime-green-600">Save</button>
+                    <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 disabled:opacity-50">Cancel</button>
+                    <button type="button" onClick={handleSave} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-lime-green-500 border border-transparent rounded-md shadow-sm hover:bg-lime-green-600 disabled:opacity-50 inline-flex items-center gap-2">
+                        {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -135,9 +181,11 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
                                     id="scan-query"
                                     value={scanQuery}
                                     onChange={(e) => setScanQuery(e.target.value)}
+                                    placeholder="e.g. GPs in Northbridge, multicultural GPs Perth, clinics with interpreters"
                                     className="block w-full rounded-md border-gray-300 dark:border-gray-600 pl-10 focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-700 dark:text-white"
                                 />
                             </div>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Use a specific query (suburb, “multicultural”, “interpreter”) for better results. Requires VITE_GEMINI_API_KEY.</p>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap justify-start md:justify-end">
                              <button

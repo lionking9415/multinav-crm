@@ -444,7 +444,7 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard clients={clients} activities={activities} workforce={workforce} resources={resources} setActiveView={setActiveView} isDarkMode={isDarkMode} />;
       case 'demographics':
-        return <ClientDemographics clients={clients} setClients={setClients} />;
+        return <ClientDemographics clients={clients} setClients={setClients} users={users} />;
       case 'activities':
         return <HealthNavigationActivities 
                     activities={activities} 

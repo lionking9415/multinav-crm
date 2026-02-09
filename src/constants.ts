@@ -20,7 +20,7 @@ export const LANGUAGE_OPTIONS = [
   "Arabic", "Assyrian", "Auslan", "Burmese", "Cantonese", "Dari", "Dinka", "English",
   "Farsi", "Filipino", "French", "Greek", "Hazaragi", "Hindi", "Indonesian", "Italian",
   "Japanese", "Karen", "Khmer", "Korean", "Kurdish", "Mandarin", "Oromo", "Pashto",
-  "Punjabi", "Rohingyal", "Russian", "Somali", "Spanish", "Swahili", "Tagalog",
+  "Punjabi", "Rohingyal", "Russian", "Sinhalese", "Somali", "Spanish", "Swahili", "Tagalog",
   "Tamil", "Thai", "Tigrinya", "Urdu", "Vietnamese"
 ];
 

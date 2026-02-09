@@ -1,12 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { WorkforceData, Workforce } from '../types';
 import Card from './Card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ETHNICITY_OPTIONS, LANGUAGE_OPTIONS } from '../constants';
 import MultiSelect from './MultiSelect';
-import { Trash2, FileDown } from 'lucide-react';
+import { Trash2, FileDown, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { workforceService } from '../services/supabaseService';
 
 interface WorkforceTrackingProps {
   workforce: WorkforceData;
@@ -97,6 +98,9 @@ const ChartCard: React.FC<{title: string, children: React.ReactNode, className?:
 );
 
 const WorkforceTracking: React.FC<WorkforceTrackingProps> = ({ workforce, setWorkforce }) => {
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
     const handleWorkforceChange = (region: 'north' | 'south', index: number, field: keyof Workforce, value: any) => {
         const updatedRegion = [...workforce[region]];
         updatedRegion[index] = { ...updatedRegion[index], [field]: value };
@@ -113,6 +117,23 @@ const WorkforceTracking: React.FC<WorkforceTrackingProps> = ({ workforce, setWor
     const addStaff = (region: 'north' | 'south') => {
         const newStaff: Workforce = { fte: 0, role: 'CaLD Health Navigator', ethnicity: '', languages: [] };
         setWorkforce({ ...workforce, [region]: [...workforce[region], newStaff] });
+    };
+
+    const handleSaveChanges = async () => {
+        setIsSaving(true);
+        setSaveError(null);
+        try {
+            await workforceService.replaceAll(workforce);
+            setSaveError(null);
+            alert('Workforce data saved successfully.');
+        } catch (error) {
+            console.error('Error saving workforce:', error);
+            const message = error instanceof Error ? error.message : 'Failed to save. Check that the workforce table exists in your database.';
+            setSaveError(message);
+            alert('Failed to save workforce: ' + message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const totalFTE = useMemo(() => {
@@ -223,9 +244,18 @@ const WorkforceTracking: React.FC<WorkforceTrackingProps> = ({ workforce, setWor
                     <StaffRegionEditor region="south" regionName="Perth South" {...{workforce, handleWorkforceChange, handleDeleteStaff, addStaff}} />
                 </div>
                 
-                 <div className="flex justify-end">
-                    <button onClick={() => alert("Workforce data saved!")} className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-lime-green-500 hover:bg-lime-green-600 focus:outline-none">
-                        Save Changes
+                 {saveError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-700 dark:text-red-300">
+                        {saveError}
+                    </div>
+                )}
+                <div className="flex justify-end">
+                    <button
+                        onClick={handleSaveChanges}
+                        disabled={isSaving}
+                        className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-lime-green-500 hover:bg-lime-green-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                    >
+                        {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
                     </button>
                 </div>
 
