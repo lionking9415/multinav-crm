@@ -197,6 +197,11 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
         throw new Error("Gemini API key is not configured. Please set the VITE_GEMINI_API_KEY environment variable.");
     }
 
+    console.log("[scanForGps] Starting scan", {
+        query,
+        hasApiKey: !!API_KEY,
+    });
+
     const prompt = `
         You are a research assistant tasked with finding medical practices in Perth, Australia.
 
@@ -229,6 +234,8 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
         ]
     `;
 
+    console.log("[scanForGps] Prompt being sent to Gemini:", prompt);
+
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
@@ -238,6 +245,8 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
                 temperature: 0.1,
             },
         });
+
+        console.log("[scanForGps] Raw Gemini response:", response.text);
 
         let jsonStr = response.text.trim();
         // The model might wrap the JSON in markdown backticks
@@ -249,13 +258,17 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
 
         const parsedData = JSON.parse(jsonStr);
 
+        console.log("[scanForGps] Parsed JSON array length:", Array.isArray(parsedData) ? parsedData.length : "not-array");
+
         if (Array.isArray(parsedData) && (parsedData.length === 0 || (parsedData.length > 0 && 'name' in parsedData[0] && typeof parsedData[0].name === 'string'))) {
-            return parsedData.map((item: any) => ({
+            const mapped = parsedData.map((item: any) => ({
                 name: item.name || 'N/A',
                 address: item.address || 'N/A',
                 phone: item.phone || 'N/A',
                 website: item.website || 'N/A'
             }));
+            console.log("[scanForGps] Mapped practices:", mapped);
+            return mapped;
         } else {
             console.error("Unexpected AI response format:", parsedData);
             throw new Error("AI response is not in the expected format (Array of GpPractice).");
