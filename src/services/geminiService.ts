@@ -199,12 +199,24 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
 
     const prompt = `
         You are a research assistant tasked with finding medical practices in Perth, Australia.
-        Based on the user's query "${query}", find relevant GP clinics and medical centers.
-        Prioritize practices that are known to be welcoming to multicultural patients, offer interpreter services, or have multilingual staff if possible.
-        For each practice you find, provide its name, full address, phone number, and official website.
-        Your response MUST be a valid JSON array of objects. Do not include any text, titles, or markdown formatting before or after the JSON array.
-        Each object in the array must have the following keys: "name", "address", "phone", "website".
-        If you cannot find a piece of information for a field, use an empty string "" or "N/A".
+
+        The user's search query is: "${query}".
+
+        1. Use web search to find **GP clinics and medical centres in or near Perth** that are relevant to this query.
+        2. You MUST tailor the results to the query:
+           - If the query mentions a language (for example "GP that speaks Polish"),
+             only include practices where reliable sources explicitly indicate that
+             language is spoken by at least one GP or staff member, or interpreter
+             services are available for that language.
+           - If the query mentions a suburb or location, strongly prioritise clinics
+             in that area.
+        3. If you cannot find any practices that clearly match the query, return an **empty JSON array** [].
+           Do NOT invent or guess matching clinics.
+        4. For each practice you find, provide its name, full address, phone number, and official website.
+        5. Your response MUST be a valid JSON array of objects. Do not include any text, titles,
+           or markdown formatting before or after the JSON array.
+        6. Each object in the array must have the following keys: "name", "address", "phone", "website".
+        7. If you cannot find a piece of information for a field, use an empty string "" or "N/A".
 
         Example response format:
         [
