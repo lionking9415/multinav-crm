@@ -10,6 +10,101 @@ interface GpEngagementProps {
   setPractices: React.Dispatch<React.SetStateAction<GpPractice[]>>;
 }
 
+const InputField: React.FC<{
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+}> = ({ label, value, onChange }) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+        <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        />
+    </div>
+);
+
+interface PracticeModalProps {
+    currentPractice: GpPractice | null;
+    setCurrentPractice: React.Dispatch<React.SetStateAction<GpPractice | null>>;
+    setIsModalOpen: (open: boolean) => void;
+    handleSave: () => void;
+    isSaving: boolean;
+    saveError: string | null;
+}
+
+const PracticeModal: React.FC<PracticeModalProps> = ({
+    currentPractice,
+    setCurrentPractice,
+    setIsModalOpen,
+    handleSave,
+    isSaving,
+    saveError,
+}) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="p-6 border-b dark:border-gray-700">
+                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">
+                    {currentPractice?.id ? 'Edit Practice Details' : 'Add New Practice'}
+                </h3>
+            </div>
+            {saveError && (
+                <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-700 dark:text-red-300">
+                    {saveError}
+                </div>
+            )}
+            <div className="p-6 space-y-4">
+                <InputField
+                    label="Practice Name (required)"
+                    value={currentPractice?.name || ''}
+                    onChange={(val) =>
+                        setCurrentPractice((p) => (p ? { ...p, name: val } : p))
+                    }
+                />
+                <InputField
+                    label="Address"
+                    value={currentPractice?.address || ''}
+                    onChange={(val) =>
+                        setCurrentPractice((p) => (p ? { ...p, address: val } : p))
+                    }
+                />
+                <InputField
+                    label="Phone"
+                    value={currentPractice?.phone || ''}
+                    onChange={(val) =>
+                        setCurrentPractice((p) => (p ? { ...p, phone: val } : p))
+                    }
+                />
+                <InputField
+                    label="Website"
+                    value={currentPractice?.website || ''}
+                    onChange={(val) =>
+                        setCurrentPractice((p) => (p ? { ...p, website: val } : p))
+                    }
+                />
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+                    <textarea
+                        name="notes"
+                        value={currentPractice?.notes || ''}
+                        onChange={(e) => setCurrentPractice(p => p ? { ...p, notes: e.target.value } : null)}
+                        rows={4}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 disabled:opacity-50">Cancel</button>
+                <button type="button" onClick={handleSave} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-lime-green-500 border border-transparent rounded-md shadow-sm hover:bg-lime-green-600 disabled:opacity-50 inline-flex items-center gap-2">
+                    {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save'}
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
 const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) => {
     const [scanQuery, setScanQuery] = useState('GPs in Perth with interest in multicultural patients');
     const [isLoading, setIsLoading] = useState(false);
@@ -110,92 +205,18 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
         }
     };
 
-    const Modal = () => (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl">
-                <div className="p-6 border-b dark:border-gray-700">
-                    <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">
-                        {currentPractice?.id ? 'Edit Practice Details' : 'Add New Practice'}
-                    </h3>
-                </div>
-                {saveError && (
-                    <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-700 dark:text-red-300">
-                        {saveError}
-                    </div>
-                )}
-                <div className="p-6 space-y-4">
-                    <InputField
-                        label="Practice Name (required)"
-                        value={currentPractice?.name || ''}
-                        onChange={(val) =>
-                            setCurrentPractice((p) => (p ? { ...p, name: val } : p))
-                        }
-                    />
-                    <InputField
-                        label="Address"
-                        value={currentPractice?.address || ''}
-                        onChange={(val) =>
-                            setCurrentPractice((p) => (p ? { ...p, address: val } : p))
-                        }
-                    />
-                    <InputField
-                        label="Phone"
-                        value={currentPractice?.phone || ''}
-                        onChange={(val) =>
-                            setCurrentPractice((p) => (p ? { ...p, phone: val } : p))
-                        }
-                    />
-                    <InputField
-                        label="Website"
-                        value={currentPractice?.website || ''}
-                        onChange={(val) =>
-                            setCurrentPractice((p) => (p ? { ...p, website: val } : p))
-                        }
-                    />
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
-                        <textarea
-                            name="notes"
-                            value={currentPractice?.notes || ''}
-                            onChange={(e) => setCurrentPractice(p => p ? { ...p, notes: e.target.value } : null)}
-                            rows={4}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        />
-                    </div>
-                </div>
-                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3">
-                    <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 disabled:opacity-50">Cancel</button>
-                    <button type="button" onClick={handleSave} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-lime-green-500 border border-transparent rounded-md shadow-sm hover:bg-lime-green-600 disabled:opacity-50 inline-flex items-center gap-2">
-                        {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-
-    const InputField = ({
-        label,
-        value,
-        onChange,
-    }: {
-        label: string;
-        value: string;
-        onChange: (value: string) => void;
-    }) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-            <input
-                type="text"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            />
-        </div>
-    );
-
     return (
         <Fragment>
-            {isModalOpen && <Modal />}
+            {isModalOpen && (
+                <PracticeModal
+                    currentPractice={currentPractice}
+                    setCurrentPractice={setCurrentPractice}
+                    setIsModalOpen={setIsModalOpen}
+                    handleSave={handleSave}
+                    isSaving={isSaving}
+                    saveError={saveError}
+                />
+            )}
             <Card>
                 <div className="p-4 bg-baby-blue-50/50 dark:bg-gray-800/60 rounded-lg border border-baby-blue-200 dark:border-gray-700 mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
