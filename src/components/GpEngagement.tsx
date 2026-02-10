@@ -124,10 +124,34 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
                     </div>
                 )}
                 <div className="p-6 space-y-4">
-                    <InputField label="Practice Name (required)" name="name" value={currentPractice?.name || ''} />
-                    <InputField label="Address" name="address" value={currentPractice?.address || ''} />
-                    <InputField label="Phone" name="phone" value={currentPractice?.phone || ''} />
-                    <InputField label="Website" name="website" value={currentPractice?.website || ''} />
+                    <InputField
+                        label="Practice Name (required)"
+                        value={currentPractice?.name || ''}
+                        onChange={(val) =>
+                            setCurrentPractice((p) => (p ? { ...p, name: val } : p))
+                        }
+                    />
+                    <InputField
+                        label="Address"
+                        value={currentPractice?.address || ''}
+                        onChange={(val) =>
+                            setCurrentPractice((p) => (p ? { ...p, address: val } : p))
+                        }
+                    />
+                    <InputField
+                        label="Phone"
+                        value={currentPractice?.phone || ''}
+                        onChange={(val) =>
+                            setCurrentPractice((p) => (p ? { ...p, phone: val } : p))
+                        }
+                    />
+                    <InputField
+                        label="Website"
+                        value={currentPractice?.website || ''}
+                        onChange={(val) =>
+                            setCurrentPractice((p) => (p ? { ...p, website: val } : p))
+                        }
+                    />
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
                         <textarea
@@ -149,14 +173,21 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
         </div>
     );
 
-    const InputField = ({ label, name, value }: { label: string, name: keyof GpPractice, value: string }) => (
+    const InputField = ({
+        label,
+        value,
+        onChange,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+    }) => (
         <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
             <input
                 type="text"
-                name={name}
                 value={value}
-                onChange={(e) => setCurrentPractice(p => p ? { ...p, [name]: e.target.value } : null)}
+                onChange={(e) => onChange(e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
         </div>
