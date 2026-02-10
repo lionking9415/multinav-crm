@@ -197,31 +197,19 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
         throw new Error("Gemini API key is not configured. Please set the VITE_GEMINI_API_KEY environment variable.");
     }
 
-    console.log("[scanForGps] Starting scan", {
-        query,
-        hasApiKey: !!API_KEY,
-    });
-
     const prompt = `
-        You are a research assistant tasked with finding medical practices in Perth, Australia.
+        Search the web for: "${query}" in Perth, Western Australia.
 
-        The user's search query is: "${query}".
+        IMPORTANT: Your search results MUST be specifically relevant to the user's query above.
+        - If the query mentions a specific language (e.g. "Polish", "Arabic", "Vietnamese"), find practices where doctors or staff speak that language.
+        - If the query mentions a specialty or patient type, find practices that match that criteria.
+        - Do NOT return generic GP practices unless they specifically match the query.
+        - Each result must be a real, currently operating practice that you found via web search.
 
-        1. Use web search to find **GP clinics and medical centres in or near Perth** that are relevant to this query.
-        2. You MUST tailor the results to the query:
-           - If the query mentions a language (for example "GP that speaks Polish"),
-             only include practices where reliable sources explicitly indicate that
-             language is spoken by at least one GP or staff member, or interpreter
-             services are available for that language.
-           - If the query mentions a suburb or location, strongly prioritise clinics
-             in that area.
-        3. If you cannot find any practices that clearly match the query, return an **empty JSON array** [].
-           Do NOT invent or guess matching clinics.
-        4. For each practice you find, provide its name, full address, phone number, and official website.
-        5. Your response MUST be a valid JSON array of objects. Do not include any text, titles,
-           or markdown formatting before or after the JSON array.
-        6. Each object in the array must have the following keys: "name", "address", "phone", "website".
-        7. If you cannot find a piece of information for a field, use an empty string "" or "N/A".
+        For each practice found, return its name, full street address, phone number, and official website URL.
+        Your response MUST be a valid JSON array of objects. Do not include any text, titles, or markdown formatting before or after the JSON array.
+        Each object in the array must have the following keys: "name", "address", "phone", "website".
+        If you cannot find a piece of information for a field, use an empty string "".
 
         Example response format:
         [
@@ -232,9 +220,9 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
             "website": "https://www.examplemedical.com.au"
           }
         ]
-    `;
 
-    console.log("[scanForGps] Prompt being sent to Gemini:", prompt);
+        Return ONLY practices that are directly relevant to: "${query}"
+    `;
 
     try {
         const response = await ai.models.generateContent({
@@ -242,11 +230,9 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
-                temperature: 0.1,
+                temperature: 0.7,
             },
         });
-
-        console.log("[scanForGps] Raw Gemini response:", response.text);
 
         let jsonStr = response.text.trim();
         // The model might wrap the JSON in markdown backticks
@@ -258,17 +244,13 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
 
         const parsedData = JSON.parse(jsonStr);
 
-        console.log("[scanForGps] Parsed JSON array length:", Array.isArray(parsedData) ? parsedData.length : "not-array");
-
         if (Array.isArray(parsedData) && (parsedData.length === 0 || (parsedData.length > 0 && 'name' in parsedData[0] && typeof parsedData[0].name === 'string'))) {
-            const mapped = parsedData.map((item: any) => ({
+            return parsedData.map((item: any) => ({
                 name: item.name || 'N/A',
                 address: item.address || 'N/A',
                 phone: item.phone || 'N/A',
                 website: item.website || 'N/A'
             }));
-            console.log("[scanForGps] Mapped practices:", mapped);
-            return mapped;
         } else {
             console.error("Unexpected AI response format:", parsedData);
             throw new Error("AI response is not in the expected format (Array of GpPractice).");

@@ -121,17 +121,21 @@ const GpEngagement: React.FC<GpEngagementProps> = ({ practices, setPractices }) 
         try {
             const results = await scanForGps(scanQuery);
             const existingNames = new Set(practices.map(p => p.name.toLowerCase()));
+            const duplicateCount = results.filter(res => res.name && existingNames.has(res.name.toLowerCase())).length;
             const newPractices = results
                 .filter(res => res.name && !existingNames.has(res.name.toLowerCase()))
                 .map(res => ({
                     ...res,
                     id: `gp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                     address: res.address || '',
-                    notes: 'Scanned from web.',
+                    notes: `Scanned from web. Query: "${scanQuery}"`,
                 }));
 
             if (newPractices.length === 0) {
-                alert("Scan complete. No new practices were found matching the query.");
+                const msg = duplicateCount > 0
+                    ? `Scan complete. Found ${duplicateCount} practice(s), but all are already in your directory.`
+                    : "Scan complete. No practices were found matching your query. Try a different search term.";
+                alert(msg);
             } else {
                 for (const p of newPractices) {
                     try {
