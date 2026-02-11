@@ -3,7 +3,7 @@ import type { HealthActivity, Client } from '../types';
 import Card from './Card';
 import ActivityForm from './ActivityForm';
 import { activityService } from '../services/supabaseService';
-import { Plus, Trash2, Pencil, FileDown, Search, Bell } from 'lucide-react';
+import { Plus, Trash2, Pencil, FileDown, Search, Bell, Eye } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -24,6 +24,9 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
   const [view, setView] = useState<'list' | 'form'>('list');
   const [selectedActivity, setSelectedActivity] = useState<HealthActivity | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isViewOnly, setIsViewOnly] = useState(false);
+
+  const isNavigator = currentUser?.role === 'navigator';
 
   const getClientName = (clientId: string) => {
       return clients.find(c => c.id === clientId)?.fullName || 'Unknown Client';
@@ -64,8 +67,15 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
     setView('form');
   };
 
+  const handleView = (activity: HealthActivity) => {
+    setSelectedActivity(activity);
+    setIsViewOnly(true);
+    setView('form');
+  };
+
   const handleEdit = (activity: HealthActivity) => {
     setSelectedActivity(activity);
+    setIsViewOnly(false);
     setView('form');
   };
   
@@ -122,6 +132,7 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
   const handleCancel = () => {
     setView('list');
     setSelectedActivity(null);
+    setIsViewOnly(false);
   };
   
   const handleDownloadCSV = () => {
@@ -186,6 +197,7 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
         onSave={handleSave}
         onCancel={handleCancel}
         clients={clients}
+        readOnly={isViewOnly}
       />
     );
   }
@@ -270,6 +282,7 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
                     <th scope="col" className="px-6 py-3">Client</th>
                     <th scope="col" className="px-6 py-3">Primary Activity</th>
                     <th scope="col" className="px-6 py-3">Date</th>
+                    <th scope="col" className="px-6 py-3">Staff</th>
                     <th scope="col" className="px-6 py-3 text-right">Actions</th>
                 </tr>
             </thead>
@@ -299,35 +312,30 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
                         </div>
                     </td>
                     <td className="px-6 py-4">{activity.date ? new Date(activity.date).toLocaleDateString() : 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{activity.createdByName || activity.createdBy || '—'}</td>
                     <td className="px-6 py-4 text-right space-x-1">
-                        {/* Only show edit/delete if user owns the activity or is admin/coordinator */}
-                        {(currentUser?.role === 'admin' || 
-                          currentUser?.role === 'coordinator' ||
-                          activity.createdBy === currentUser?.email ||
-                          activity.createdByName === currentUser?.name ||
-                          !activity.createdBy) && (
+                        {isNavigator ? (
+                            <button onClick={() => handleView(activity)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
+                                <Eye className="h-5 w-5" />
+                            </button>
+                        ) : (
                             <>
-                                <button onClick={() => handleEdit(activity)} className="p-2 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <button onClick={() => handleView(activity)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
+                                    <Eye className="h-5 w-5" />
+                                </button>
+                                <button onClick={() => handleEdit(activity)} className="p-2 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Edit">
                                     <Pencil className="h-5 w-5" />
                                 </button>
-                                <button onClick={() => handleDelete(activity.id)} className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <button onClick={() => handleDelete(activity.id)} className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Delete">
                                     <Trash2 className="h-5 w-5" />
                                 </button>
                             </>
-                        )}
-                        {/* Show who created this if not the current user */}
-                        {currentUser?.role === 'navigator' && 
-                         activity.createdBy !== currentUser?.email && 
-                         activity.createdBy && (
-                            <span className="text-xs text-gray-400">
-                                Created by {activity.createdByName || activity.createdBy}
-                            </span>
                         )}
                     </td>
                 </tr>
                 )) : (
                     <tr>
-                        <td colSpan={4} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                        <td colSpan={5} className="text-center py-10 text-gray-500 dark:text-gray-400">
                             {searchQuery ? 'No activities match your search.' : 'No activities logged. Add a new activity to get started.'}
                         </td>
                     </tr>

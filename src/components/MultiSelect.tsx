@@ -6,9 +6,10 @@ interface MultiSelectProps {
   options: string[];
   selectedOptions: string[];
   onChange: (selected: string[]) => void;
+  disabled?: boolean;
 }
 
-const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedOptions, onChange }) => {
+const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedOptions, onChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -41,13 +42,13 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedOptio
       {label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>}
       <div className="flex flex-col items-center relative">
         <div className="w-full">
-          <div className="p-1 flex flex-wrap gap-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-md">
+          <div className={`p-1 flex flex-wrap gap-1 border border-gray-300 dark:border-gray-600 rounded-md ${disabled ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}>
              {selectedOptions.map(option => (
               <div key={option} className="flex justify-center items-center m-1 font-medium py-1 px-2 bg-lime-green-300 rounded-full text-lime-green-700 bg-opacity-80 border border-lime-green-400">
                 <div className="text-xs font-normal leading-none max-w-full flex-initial">{option}</div>
                 <div className="flex flex-auto flex-row-reverse">
-                  <div onClick={() => toggleOption(option)}>
-                    <X className="cursor-pointer hover:text-lime-green-800 h-4 w-4 ml-2" />
+                  <div onClick={() => !disabled && toggleOption(option)}>
+                    <X className={`h-4 w-4 ml-2 ${disabled ? 'cursor-not-allowed text-gray-400' : 'cursor-pointer hover:text-lime-green-800'}`} />
                   </div>
                 </div>
               </div>
@@ -55,17 +56,19 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedOptio
             <div className="flex-1">
               <input
                 placeholder={selectedOptions.length > 0 ? "" : "Select options..."}
-                className="bg-transparent p-1 px-2 appearance-none outline-none h-full w-full text-gray-800 dark:text-gray-100"
-                onFocus={() => setIsOpen(true)}
+                className="bg-transparent p-1 px-2 appearance-none outline-none h-full w-full text-gray-800 dark:text-gray-100 disabled:cursor-not-allowed"
+                onFocus={() => !disabled && setIsOpen(true)}
                 value={searchTerm}
                 onChange={(e) => {
+                    if (disabled) return;
                     setSearchTerm(e.target.value);
                     if (!isOpen) setIsOpen(true);
                 }}
+                disabled={disabled}
               />
             </div>
             <div className="text-gray-300 w-8 py-1 pl-2 pr-1 border-l flex items-center border-gray-200 dark:border-gray-600">
-              <button type="button" onClick={() => setIsOpen(!isOpen)} className="cursor-pointer w-6 h-6 text-gray-600 dark:text-gray-400 outline-none focus:outline-none">
+              <button type="button" onClick={() => !disabled && setIsOpen(!isOpen)} disabled={disabled} className={`w-6 h-6 text-gray-600 dark:text-gray-400 outline-none focus:outline-none ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <ChevronDown className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
               </button>
             </div>

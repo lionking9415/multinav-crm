@@ -5,9 +5,10 @@ interface CheckboxGroupProps {
   options: string[];
   selectedOptions: string[];
   onChange: (selected: string[]) => void;
+  disabled?: boolean;
 }
 
-const CheckboxGroup: React.FC<CheckboxGroupProps> = ({ label, options, selectedOptions, onChange }) => {
+const CheckboxGroup: React.FC<CheckboxGroupProps> = ({ label, options, selectedOptions, onChange, disabled }) => {
   const handleCheckboxChange = (option: string) => {
     const newSelected = selectedOptions.includes(option)
       ? selectedOptions.filter((item) => item !== option)
@@ -23,9 +24,10 @@ const CheckboxGroup: React.FC<CheckboxGroupProps> = ({ label, options, selectedO
           <label key={option} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-lime-green-500 focus:ring-lime-green-500"
+              className="h-4 w-4 rounded border-gray-300 text-lime-green-500 focus:ring-lime-green-500 disabled:cursor-not-allowed"
               checked={selectedOptions.includes(option)}
               onChange={() => handleCheckboxChange(option)}
+              disabled={disabled}
             />
             <span className="text-gray-700 dark:text-gray-200">{option}</span>
           </label>

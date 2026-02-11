@@ -16,9 +16,10 @@ interface ActivityFormProps {
   clients: Client[];
   onSave: (activity: HealthActivity) => void;
   onCancel: () => void;
+  readOnly?: boolean;
 }
 
-const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, onSave, onCancel }) => {
+const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, onSave, onCancel, readOnly }) => {
   const [activity, setActivity] = useState<HealthActivity>({
     id: initialActivity?.id || '',
     clientId: initialActivity?.clientId || (clients.length > 0 ? clients[0].id : ''),
@@ -59,7 +60,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
     <Card>
       <form onSubmit={handleSubmit}>
          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-            {initialActivity ? 'Edit Activity' : 'Log New Activity'}
+            {readOnly ? 'View Activity' : (initialActivity ? 'Edit Activity' : 'Log New Activity')}
         </h2>
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
@@ -71,7 +72,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                         value={activity.clientId} 
                         onChange={handleInputChange} 
                         required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        disabled={readOnly}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
                     >
                         <option value="" disabled>Select a client</option>
                         {clients.map(client => (
@@ -88,7 +90,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                         value={activity.date}
                         onChange={handleInputChange}
                         required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+                        disabled={readOnly}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" />
                 </div>
             </div>
             
@@ -103,7 +106,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                     value={activity.location || ''}
                     onChange={handleInputChange}
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    disabled={readOnly}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
                 >
                     <option value="">Select Location</option>
                     <option value="Canning">Canning</option>
@@ -122,6 +126,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                   options={NAVIGATION_ASSISTANCE_OPTIONS}
                   selectedOptions={activity.navigationAssistance}
                   onChange={handleCheckboxChange('navigationAssistance')}
+                  disabled={readOnly}
                 />
                 {activity.navigationAssistance.includes('Other Navigation Assistance') && (
                   <div className="ml-6">
@@ -145,6 +150,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                   options={SERVICES_ACCESSED_OPTIONS}
                   selectedOptions={activity.servicesAccessed}
                   onChange={handleCheckboxChange('servicesAccessed')}
+                  disabled={readOnly}
                 />
                 {activity.servicesAccessed.includes('Other Services') && (
                   <div className="ml-6">
@@ -169,12 +175,12 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
               <div className="space-y-6">
                 <div>
                   <label htmlFor="referralsMade" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Referrals Made</label>
-                  <textarea name="referralsMade" id="referralsMade" value={activity.referralsMade} onChange={handleInputChange} rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+                  <textarea name="referralsMade" id="referralsMade" value={activity.referralsMade} onChange={handleInputChange} rows={3} disabled={readOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" />
                 </div>
                 
                 <div>
                   <label htmlFor="followUpActions" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Follow-up Actions Taken</label>
-                  <textarea name="followUpActions" id="followUpActions" value={activity.followUpActions} onChange={handleInputChange} rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+                  <textarea name="followUpActions" id="followUpActions" value={activity.followUpActions} onChange={handleInputChange} rows={3} disabled={readOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" />
                 </div>
               </div>
             </Accordion>
@@ -186,6 +192,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                   options={EDUCATIONAL_RESOURCES_OPTIONS}
                   selectedOptions={activity.educationalResources}
                   onChange={handleCheckboxChange('educationalResources')}
+                  disabled={readOnly}
                 />
                 {activity.educationalResources.includes('Other Education Topics') && (
                   <div className="ml-6">
@@ -209,12 +216,14 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                   options={PREVENTIVE_SERVICES_OPTIONS}
                   selectedOptions={activity.preventiveServices}
                   onChange={handleCheckboxChange('preventiveServices')}
+                  disabled={readOnly}
                 />
                 <CheckboxGroup
                   label="Maternal and Child Health"
                   options={MATERNAL_CHILD_HEALTH_OPTIONS}
                   selectedOptions={activity.maternalChildHealth}
                   onChange={handleCheckboxChange('maternalChildHealth')}
+                  disabled={readOnly}
                 />
               </div>
             </Accordion>
@@ -228,7 +237,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                     name="isDischarge"
                     checked={activity.isDischarge || false}
                     onChange={(e) => setActivity({ ...activity, isDischarge: e.target.checked })}
-                    className="h-4 w-4 text-lime-green-600 focus:ring-lime-green-500 border-gray-300 rounded"
+                    disabled={readOnly}
+                    className="h-4 w-4 text-lime-green-600 focus:ring-lime-green-500 border-gray-300 rounded disabled:cursor-not-allowed"
                   />
                   <label htmlFor="isDischarge" className="ml-2 block text-sm text-gray-900 dark:text-gray-100">
                     This is a discharge activity
@@ -247,7 +257,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                         id="dischargeDate"
                         value={activity.dischargeDate || ''}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" 
+                        disabled={readOnly}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" 
                       />
                     </div>
                     
@@ -262,7 +273,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
                         onChange={handleInputChange} 
                         rows={3} 
                         placeholder="Enter reason for discharge..."
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" 
+                        disabled={readOnly}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" 
                       />
                     </div>
                   </>
@@ -272,11 +284,13 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
         </div>
         <div className="mt-8 flex justify-end space-x-4">
             <button type="button" onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 focus:outline-none">
-                Cancel
+                {readOnly ? 'Back' : 'Cancel'}
             </button>
-            <button type="submit" className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-lime-green-500 hover:bg-lime-green-600 focus:outline-none">
-                Save Activity
-            </button>
+            {!readOnly && (
+              <button type="submit" className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-lime-green-500 hover:bg-lime-green-600 focus:outline-none">
+                  Save Activity
+              </button>
+            )}
         </div>
       </form>
     </Card>

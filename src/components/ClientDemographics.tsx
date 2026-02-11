@@ -4,7 +4,7 @@ import type { Client, User } from '../types';
 import { clientService } from '../services/supabaseService';
 import Card from './Card';
 import ClientForm from './ClientForm';
-import { Plus, Trash2, Pencil, FileDown, Search } from 'lucide-react';
+import { Plus, Trash2, Pencil, FileDown, Search, Eye } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -13,20 +13,35 @@ interface ClientDemographicsProps {
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
   users: User[];
+  currentUser?: {
+    email: string;
+    role: 'admin' | 'coordinator' | 'navigator';
+    name: string;
+  };
 }
 
-const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setClients, users }) => {
+const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setClients, users, currentUser }) => {
   const [view, setView] = useState<'list' | 'form'>('list');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isViewOnly, setIsViewOnly] = useState(false);
+
+  const isNavigator = currentUser?.role === 'navigator';
 
   const handleAddNew = () => {
     setSelectedClient(null);
     setView('form');
   };
 
+  const handleView = (client: Client) => {
+    setSelectedClient(client);
+    setIsViewOnly(true);
+    setView('form');
+  };
+
   const handleEdit = (client: Client) => {
     setSelectedClient(client);
+    setIsViewOnly(false);
     setView('form');
   };
 
@@ -71,6 +86,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
   const handleCancel = () => {
     setView('list');
     setSelectedClient(null);
+    setIsViewOnly(false);
   };
   
   const filteredClients = clients.filter(client =>
@@ -153,6 +169,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
         users={users}
         onSave={handleSave}
         onCancel={handleCancel}
+        readOnly={isViewOnly}
       />
     );
   }
@@ -229,12 +246,23 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
                     <td className="px-6 py-4">{client.referralDate ? new Date(client.referralDate).toLocaleDateString() : 'N/A'}</td>
                     <td className="px-6 py-4">{getAssignedStaffName(client.assignedStaffId)}</td>
                     <td className="px-6 py-4 text-right space-x-1">
-                    <button onClick={() => handleEdit(client)} className="p-2 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                        <Pencil className="h-5 w-5" />
-                    </button>
-                    <button onClick={() => handleDelete(client.id)} className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                        <Trash2 className="h-5 w-5" />
-                    </button>
+                    {isNavigator ? (
+                      <button onClick={() => handleView(client)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
+                          <Eye className="h-5 w-5" />
+                      </button>
+                    ) : (
+                      <>
+                        <button onClick={() => handleView(client)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
+                            <Eye className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => handleEdit(client)} className="p-2 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Edit">
+                            <Pencil className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => handleDelete(client.id)} className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Delete">
+                            <Trash2 className="h-5 w-5" />
+                        </button>
+                      </>
+                    )}
                     </td>
                 </tr>
                 )) : (

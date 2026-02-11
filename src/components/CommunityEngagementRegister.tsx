@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { CommunityEngagement } from '../types';
 import Card from './Card';
 import { communityEngagementService } from '../services/supabaseService';
-import { Plus, Trash2, Pencil, FileDown, Search, X, Calendar, Building2, Users, FileText, Home, Globe } from 'lucide-react';
+import { Plus, Trash2, Pencil, FileDown, Search, X, Calendar, Building2, Users, FileText, Home, Globe, Eye } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -32,6 +32,9 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
     meetingNotes: ''
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+
+  const isNavigator = currentUser?.role === 'navigator';
 
   // Filter engagements based on user role and ownership
   const userFilteredEngagements = engagements.filter(engagement => {
@@ -71,6 +74,19 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
     setView('form');
   };
 
+  const handleView = (engagement: CommunityEngagement) => {
+    setSelectedEngagement(engagement);
+    setFormData({
+      dateOfMeeting: engagement.dateOfMeeting,
+      agencyType: engagement.agencyType || 'external',
+      agencyName: engagement.agencyName,
+      staffPresent: engagement.staffPresent,
+      meetingNotes: engagement.meetingNotes
+    });
+    setIsViewOnly(true);
+    setView('form');
+  };
+
   const handleEdit = (engagement: CommunityEngagement) => {
     setSelectedEngagement(engagement);
     setFormData({
@@ -80,6 +96,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
       staffPresent: engagement.staffPresent,
       meetingNotes: engagement.meetingNotes
     });
+    setIsViewOnly(false);
     setView('form');
   };
   
@@ -136,6 +153,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
   const handleCancel = () => {
     setView('list');
     setSelectedEngagement(null);
+    setIsViewOnly(false);
   };
   
   const handleDownloadCSV = () => {
@@ -332,7 +350,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
       <Card>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-            {selectedEngagement ? 'Edit Engagement' : 'Log New Community Engagement'}
+            {isViewOnly ? 'View Engagement' : (selectedEngagement ? 'Edit Engagement' : 'Log New Community Engagement')}
           </h2>
           <button
             onClick={handleCancel}
@@ -353,7 +371,8 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               type="date"
               value={formData.dateOfMeeting}
               onChange={(e) => setFormData({ ...formData, dateOfMeeting: e.target.value })}
-              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white"
+              disabled={isViewOnly}
+              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
               required
             />
           </div>
@@ -367,8 +386,9 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, agencyType: 'internal' })}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                onClick={() => !isViewOnly && setFormData({ ...formData, agencyType: 'internal' })}
+                disabled={isViewOnly}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
                   formData.agencyType === 'internal'
                     ? 'border-lime-green-500 bg-lime-green-50 dark:bg-lime-green-900/30 text-lime-green-700 dark:text-lime-green-300'
                     : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500'
@@ -379,8 +399,9 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, agencyType: 'external' })}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                onClick={() => !isViewOnly && setFormData({ ...formData, agencyType: 'external' })}
+                disabled={isViewOnly}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
                   formData.agencyType === 'external'
                     ? 'border-baby-blue-500 bg-baby-blue-50 dark:bg-baby-blue-900/30 text-baby-blue-700 dark:text-baby-blue-300'
                     : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500'
@@ -403,7 +424,8 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               value={formData.agencyName}
               onChange={(e) => setFormData({ ...formData, agencyName: e.target.value })}
               placeholder="Enter agency or organization name"
-              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white"
+              disabled={isViewOnly}
+              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
               required
             />
           </div>
@@ -419,7 +441,8 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               value={formData.staffPresent}
               onChange={(e) => setFormData({ ...formData, staffPresent: e.target.value })}
               placeholder="Enter names of staff who attended"
-              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white"
+              disabled={isViewOnly}
+              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -434,7 +457,8 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               onChange={(e) => setFormData({ ...formData, meetingNotes: e.target.value })}
               placeholder="Enter meeting notes, discussion points, action items..."
               rows={6}
-              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white"
+              disabled={isViewOnly}
+              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -445,15 +469,17 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               onClick={handleCancel}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-green-500"
             >
-              Cancel
+              {isViewOnly ? 'Back' : 'Cancel'}
             </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-lime-green-500 hover:bg-lime-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {isSaving ? 'Saving...' : (selectedEngagement ? 'Update Engagement' : 'Save Engagement')}
-            </button>
+            {!isViewOnly && (
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-lime-green-500 hover:bg-lime-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isSaving ? 'Saving...' : (selectedEngagement ? 'Update Engagement' : 'Save Engagement')}
+              </button>
+            )}
           </div>
         </form>
       </Card>
@@ -567,27 +593,41 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
                   </div>
                 </td>
                 <td className="px-3 py-4 text-right">
-                  {/* Only show edit/delete if user owns the engagement or is admin/coordinator */}
-                  {(currentUser?.role === 'admin' || 
-                    currentUser?.role === 'coordinator' ||
-                    engagement.createdBy === currentUser?.email ||
-                    engagement.createdByName === currentUser?.name ||
-                    !engagement.createdBy) && (
-                    <div className="flex justify-end gap-1">
+                  <div className="flex justify-end gap-1">
+                    {isNavigator ? (
                       <button 
-                        onClick={() => handleEdit(engagement)} 
-                        className="p-1 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        onClick={() => handleView(engagement)} 
+                        className="p-1 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="View"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       </button>
-                      <button 
-                        onClick={() => handleDelete(engagement.id)} 
-                        className="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => handleView(engagement)} 
+                          className="p-1 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          title="View"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleEdit(engagement)} 
+                          className="p-1 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(engagement.id)} 
+                          className="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             )) : (
