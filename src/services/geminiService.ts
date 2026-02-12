@@ -197,20 +197,29 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
         throw new Error("Gemini API key is not configured. Please set the VITE_GEMINI_API_KEY environment variable.");
     }
 
+    const searchTimestamp = new Date().toISOString();
     const prompt = `
-        Use Google Search to find GP clinics and medical centres in Perth, Western Australia that match the following specific request:
+        You are a local clinic search engine. Use Google Search to find GP clinics, medical practices, and doctors in Perth, Western Australia that match this specific search query.
 
-        USER REQUEST: "${query}"
+        SEARCH QUERY: "${query}"
+        SEARCH TIME: ${searchTimestamp}
+
+        SEARCH STRATEGY:
+        - Perform multiple targeted Google searches to find the most relevant results for this SPECIFIC query.
+        - If the query mentions a language (e.g. "Tagalog", "Dutch", "Somali", "Arabic"), search for doctors and clinics where staff speak that language. Try searches like: "${query} GP Perth", "${query} speaking doctor Perth WA", "${query} language doctor clinic Perth".
+        - If the query mentions a suburb or area, focus results on that geographic area and nearby suburbs.
+        - If the query mentions a specialty, search for that specific medical specialty.
+        - Look at clinic websites, Healthdirect, HotDoc, Google Maps listings, and medical directories for accurate information.
 
         CRITICAL RULES:
-        1. You MUST use Google Search to find REAL practices. Do NOT make up or hallucinate practice names.
-        2. Every result you return MUST be directly relevant to the user's request: "${query}".
-        3. If the user asks for a specific language (e.g. "Somali", "Polish", "Arabic"), you MUST only return practices where a doctor or staff member speaks that language. Search for terms like "${query} doctor Perth" or "Somali speaking GP Perth" etc.
-        4. Do NOT pad the results with generic GP practices that don't match the query.
-        5. If you cannot find any practices matching the query, return an empty array [].
-        6. For each practice, provide: name, full address, phone number, and website.
+        1. You MUST use Google Search to find REAL practices. Do NOT make up or hallucinate any practice names, addresses, phone numbers, or websites.
+        2. Every result MUST be directly relevant to: "${query}". Do NOT pad results with generic GP practices.
+        3. Each search query should produce DIFFERENT results based on what was asked. "GPs that speak Tagalog" must return completely different results than "GPs that speak Dutch".
+        4. If you cannot find practices matching the query, return an empty array []. Do NOT return irrelevant results.
+        5. Return up to 15 results maximum, prioritized by relevance and proximity.
+        6. For each practice, provide the most accurate and up-to-date: name, full street address, phone number, and website URL.
 
-        Your response MUST be a valid JSON array. Do not include any text or markdown before or after the JSON.
+        Your response MUST be a valid JSON array only. No text or markdown before or after.
         Each object: { "name": string, "address": string, "phone": string, "website": string }
         Use "" for any field you cannot find.
     `;

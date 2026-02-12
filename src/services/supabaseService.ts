@@ -232,7 +232,17 @@ export const activityService = {
       followUpActions: activity.follow_up_actions || '',
       educationalResources: activity.educational_resources || [],
       preventiveServices: activity.preventive_services || [],
-      maternalChildHealth: activity.maternal_child_health || []
+      maternalChildHealth: activity.maternal_child_health || [],
+      location: activity.location || '',
+      otherAssistance: activity.other_assistance || '',
+      otherEducation: activity.other_education || '',
+      isDischarge: activity.is_discharge || false,
+      dischargeDate: activity.discharge_date || '',
+      dischargeReason: activity.discharge_reason || '',
+      createdBy: activity.created_by,
+      createdByName: activity.created_by_name,
+      createdByRole: activity.created_by_role,
+      createdAt: activity.created_at
     }));
   },
 
@@ -249,7 +259,17 @@ export const activityService = {
         follow_up_actions: activity.followUpActions,
         educational_resources: activity.educationalResources,
         preventive_services: activity.preventiveServices,
-        maternal_child_health: activity.maternalChildHealth
+        maternal_child_health: activity.maternalChildHealth,
+        location: activity.location || '',
+        other_assistance: activity.otherAssistance || '',
+        other_education: activity.otherEducation || '',
+        is_discharge: activity.isDischarge || false,
+        discharge_date: activity.dischargeDate || null,
+        discharge_reason: activity.dischargeReason || '',
+        created_by: activity.createdBy || '',
+        created_by_name: activity.createdByName || '',
+        created_by_role: activity.createdByRole || 'navigator',
+        created_at: activity.createdAt || new Date().toISOString()
       })
       .select()
       .single();
