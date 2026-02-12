@@ -253,11 +253,18 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
         console.groupEnd();
 
         let jsonStr = rawText.trim();
-        // The model might wrap the JSON in markdown backticks
-        if (jsonStr.startsWith('```json')) {
-            jsonStr = jsonStr.substring(7, jsonStr.length - 3).trim();
-        } else if (jsonStr.startsWith('```')) {
-             jsonStr = jsonStr.substring(3, jsonStr.length - 3).trim();
+        
+        // Extract JSON from the response - the model may wrap it in markdown
+        // backticks or include explanatory text before/after the JSON
+        const jsonCodeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonCodeBlockMatch) {
+            jsonStr = jsonCodeBlockMatch[1].trim();
+        } else {
+            // Try to find a bare JSON array in the response text
+            const jsonArrayMatch = jsonStr.match(/(\[[\s\S]*\])/);
+            if (jsonArrayMatch) {
+                jsonStr = jsonArrayMatch[1].trim();
+            }
         }
 
         const parsedData = JSON.parse(jsonStr);
