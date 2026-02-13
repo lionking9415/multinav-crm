@@ -36,24 +36,8 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
 
   const isNavigator = currentUser?.role === 'navigator';
 
-  // Filter engagements based on user role and ownership
-  const userFilteredEngagements = engagements.filter(engagement => {
-    // Admins and coordinators can see all engagements
-    if (currentUser?.role === 'admin' || currentUser?.role === 'coordinator') {
-      return true;
-    }
-    
-    // Navigators can only see their own engagements
-    if (currentUser?.role === 'navigator') {
-      return engagement.createdBy === currentUser.email || 
-             engagement.createdByName === currentUser.name ||
-             (!engagement.createdBy && !engagement.createdByName);
-    }
-    
-    return true;
-  });
-  
-  const filteredEngagements = userFilteredEngagements.filter(engagement => {
+  // All users can see all engagements
+  const filteredEngagements = engagements.filter(engagement => {
     const query = searchQuery.toLowerCase();
     return (
       engagement.agencyName.toLowerCase().includes(query) ||
@@ -492,22 +476,9 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
       <div className="flex justify-between items-start md:items-center mb-6 flex-col md:flex-row gap-4">
         <div className="flex-1 w-full md:w-auto">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Community Engagement Register</h2>
-          {/* Show whose engagements are being displayed */}
-          {currentUser?.role === 'navigator' && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Showing your engagements only
-            </p>
-          )}
-          {currentUser?.role === 'coordinator' && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Showing all team engagements (Coordinator view)
-            </p>
-          )}
-          {currentUser?.role === 'admin' && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Showing all engagements (Admin view)
-            </p>
-          )}
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Showing all engagements
+          </p>
           <div className="relative mt-2 max-w-sm">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <Search className="h-5 w-5 text-gray-400" />
@@ -562,6 +533,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               <th scope="col" className="px-3 py-3 w-36">Agency Name</th>
               <th scope="col" className="px-3 py-3 w-32">Staff Present</th>
               <th scope="col" className="px-3 py-3">Meeting Notes</th>
+              <th scope="col" className="px-3 py-3 w-28">Registered By</th>
               <th scope="col" className="px-3 py-3 w-20 text-right">Actions</th>
             </tr>
           </thead>
@@ -591,6 +563,9 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
                   <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                     {engagement.meetingNotes || <span className="text-gray-400">No notes</span>}
                   </div>
+                </td>
+                <td className="px-3 py-4 text-xs text-gray-700 dark:text-gray-300">
+                  {engagement.createdByName || engagement.createdBy || <span className="text-gray-400">—</span>}
                 </td>
                 <td className="px-3 py-4 text-right">
                   <div className="flex justify-end gap-1">
@@ -632,7 +607,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
               </tr>
             )) : (
               <tr>
-                <td colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                <td colSpan={7} className="text-center py-10 text-gray-500 dark:text-gray-400">
                   {searchQuery ? 'No engagements match your search.' : 'No engagements recorded. Add a new engagement to get started.'}
                 </td>
               </tr>

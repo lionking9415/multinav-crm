@@ -123,9 +123,10 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
     }
     setView('list');
     setSelectedActivity(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving activity:', error);
-      alert('Failed to save activity. Please check your database connection.');
+      const detail = error?.message || error?.details || error?.hint || 'Unknown error';
+      alert(`Failed to save activity: ${detail}`);
     }
   };
 
