@@ -264,7 +264,7 @@ export const activityService = {
         other_assistance: activity.otherAssistance || '',
         other_education: activity.otherEducation || '',
         is_discharge: activity.isDischarge || false,
-        discharge_date: activity.dischargeDate || null,
+        discharge_date: activity.dischargeDate && activity.dischargeDate !== '' ? activity.dischargeDate : null,
         discharge_reason: activity.dischargeReason || '',
         created_by: activity.createdBy || '',
         created_by_name: activity.createdByName || '',
@@ -297,7 +297,7 @@ export const activityService = {
     if (activity.otherAssistance !== undefined) updateData.other_assistance = activity.otherAssistance;
     if (activity.otherEducation !== undefined) updateData.other_education = activity.otherEducation;
     if (activity.isDischarge !== undefined) updateData.is_discharge = activity.isDischarge;
-    if (activity.dischargeDate !== undefined) updateData.discharge_date = activity.dischargeDate;
+    if (activity.dischargeDate !== undefined) updateData.discharge_date = activity.dischargeDate && activity.dischargeDate !== '' ? activity.dischargeDate : null;
     if (activity.dischargeReason !== undefined) updateData.discharge_reason = activity.dischargeReason;
     
     const { data, error } = await supabase
