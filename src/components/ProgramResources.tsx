@@ -75,7 +75,7 @@ export default function ProgramResources({ resources, setResources }: ProgramRes
                     )}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    Added: {new Date(resource.dateAdded).toLocaleDateString()} at {new Date(resource.dateAdded).toLocaleTimeString()}
+                    Added: {new Date(resource.dateAdded).toLocaleDateString('en-AU')} at {new Date(resource.dateAdded).toLocaleTimeString('en-AU')}
                 </p>
             </div>
         </div>

@@ -136,7 +136,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
           c.age,
           c.ethnicity,
           c.referralSource,
-          c.referralDate ? new Date(c.referralDate).toLocaleDateString() : 'N/A',
+          c.referralDate ? new Date(c.referralDate).toLocaleDateString('en-AU') : 'N/A',
           getAssignedStaffName(c.assignedStaffId)
       ]);
 
@@ -243,7 +243,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
                     <td className="px-6 py-4">{client.age}</td>
                     <td className="px-6 py-4">{client.ethnicity}</td>
                     <td className="px-6 py-4">{client.languages.join(', ')}</td>
-                    <td className="px-6 py-4">{client.referralDate ? new Date(client.referralDate).toLocaleDateString() : 'N/A'}</td>
+                    <td className="px-6 py-4">{client.referralDate ? new Date(client.referralDate).toLocaleDateString('en-AU') : 'N/A'}</td>
                     <td className="px-6 py-4">{getAssignedStaffName(client.assignedStaffId)}</td>
                     <td className="px-6 py-4 text-right space-x-1">
                     {isNavigator ? (

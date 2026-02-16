@@ -152,7 +152,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
         `"${e.staffPresent.replace(/"/g, '""')}"`,
         `"${e.meetingNotes.replace(/"/g, '""')}"`,
         `"${e.createdByName || e.createdBy || 'Unknown'}"`,
-        `"${e.createdAt ? new Date(e.createdAt).toLocaleDateString() : 'N/A'}"`
+        `"${e.createdAt ? new Date(e.createdAt).toLocaleDateString('en-AU') : 'N/A'}"`
       ].join(','))
     ];
     const csvContent = csvRows.join('\n');
@@ -180,11 +180,11 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
     // Subtitle with date range
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Generated: ${new Date().toLocaleDateString()} | Total Records: ${filteredEngagements.length}`, pageWidth / 2, 22, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-AU')} | Total Records: ${filteredEngagements.length}`, pageWidth / 2, 22, { align: 'center' });
 
     const tableHead = [["Date", "Type", "Agency Name", "Staff Present", "Meeting Notes"]];
     const tableBody = filteredEngagements.map(e => [
-      e.dateOfMeeting ? new Date(e.dateOfMeeting).toLocaleDateString() : 'N/A',
+      e.dateOfMeeting ? new Date(e.dateOfMeeting).toLocaleDateString('en-AU') : 'N/A',
       e.agencyType === 'internal' ? 'Internal' : 'External',
       e.agencyName || 'N/A',
       e.staffPresent || 'N/A',
@@ -306,7 +306,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
       const notes = (e.meetingNotes || 'N/A').replace(/\n/g, '<br>');
       content += `
         <tr>
-          <td class="col-date">${e.dateOfMeeting ? new Date(e.dateOfMeeting).toLocaleDateString() : 'N/A'}</td>
+          <td class="col-date">${e.dateOfMeeting ? new Date(e.dateOfMeeting).toLocaleDateString('en-AU') : 'N/A'}</td>
           <td class="col-type"><span class="${typeClass}">${typeLabel}</span></td>
           <td class="col-agency"><strong>${e.agencyName || 'N/A'}</strong></td>
           <td class="col-staff">${e.staffPresent || '-'}</td>
@@ -541,7 +541,7 @@ const CommunityEngagementRegister: React.FC<CommunityEngagementRegisterProps> = 
             {filteredEngagements.length > 0 ? filteredEngagements.map(engagement => (
               <tr key={engagement.id} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                 <td className="px-3 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-xs">
-                  {engagement.dateOfMeeting ? new Date(engagement.dateOfMeeting).toLocaleDateString() : 'N/A'}
+                  {engagement.dateOfMeeting ? new Date(engagement.dateOfMeeting).toLocaleDateString('en-AU') : 'N/A'}
                 </td>
                 <td className="px-3 py-4">
                   <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${

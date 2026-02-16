@@ -169,7 +169,7 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
       const tableHead = [["Client", "Date", "Location", "Primary Activity", "Services Accessed"]];
       const tableBody = filteredActivities.map(a => [
           getClientName(a.clientId),
-          a.date ? new Date(a.date).toLocaleDateString() : 'N/A',
+          a.date ? new Date(a.date).toLocaleDateString('en-AU') : 'N/A',
           a.location || 'Not specified',
           a.navigationAssistance.join(', ') || 'N/A',
           a.servicesAccessed.join(', ') || 'N/A'
@@ -312,7 +312,7 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
                             )}
                         </div>
                     </td>
-                    <td className="px-6 py-4">{activity.date ? new Date(activity.date).toLocaleDateString() : 'N/A'}</td>
+                    <td className="px-6 py-4">{activity.date ? new Date(activity.date).toLocaleDateString('en-AU') : 'N/A'}</td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{activity.createdByName || activity.createdBy || '—'}</td>
                     <td className="px-6 py-4 text-right space-x-1">
                         {isNavigator ? (

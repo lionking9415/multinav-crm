@@ -368,7 +368,7 @@ const ProgramReporting: React.FC<{
     doc.text('Program Report', 105, y, { align: 'center' });
     y += 8;
     doc.setFontSize(12);
-    doc.text(`Reporting Period: ${new Date(reportData.dateRange.start).toLocaleDateString()} - ${new Date(reportData.dateRange.end).toLocaleDateString()}`, 105, y, { align: 'center' });
+    doc.text(`Reporting Period: ${new Date(reportData.dateRange.start).toLocaleDateString('en-AU')} - ${new Date(reportData.dateRange.end).toLocaleDateString('en-AU')}`, 105, y, { align: 'center' });
     y += 8;
     doc.text(`Region: ${selectedRegion}`, 105, y, { align: 'center' });
     y += 15;
@@ -809,7 +809,7 @@ const ProgramReporting: React.FC<{
 
         {reportData && (
             <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Report Preview for {new Date(reportData.dateRange.start).toLocaleDateString()} to {new Date(reportData.dateRange.end).toLocaleDateString()}</h3>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Report Preview for {new Date(reportData.dateRange.start).toLocaleDateString('en-AU')} to {new Date(reportData.dateRange.end).toLocaleDateString('en-AU')}</h3>
                 
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
                     <h4 className="font-semibold text-md text-lime-green-600 dark:text-lime-green-400 mb-2 flex items-center"><Bot className="mr-2 h-5 w-5"/> AI-Generated Summary</h4>

@@ -197,7 +197,7 @@ const ExperienceView: React.FC<{ entries: ExperienceEntry[], clientLanguage?: st
                 
                 return (
                     <div key={entry.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-md border-l-4 border-baby-blue-300 dark:border-baby-blue-600">
-                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleString()}</p>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleString('en-AU')}</p>
                         
                         {/* Original content */}
                         <p className="text-gray-800 dark:text-gray-200 mt-1 whitespace-pre-wrap">{entry.content}</p>
@@ -338,7 +338,7 @@ const MessagesView: React.FC<{ messages: ChatMessage[], client: Client, onSendMe
                                 <div className={`p-3 rounded-lg ${isPatientMessage ? 'bg-baby-blue-100 dark:bg-baby-blue-900/50' : 'bg-lime-green-100 dark:bg-lime-green-900/50'}`}>
                                     <p className="text-gray-800 dark:text-gray-100">{msg.text}</p>
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex justify-between items-center">
-                                        <span>{new Date(msg.timestamp).toLocaleString()}</span>
+                                        <span>{new Date(msg.timestamp).toLocaleString('en-AU')}</span>
                                         {showTranslation && !hasTranslation && !isTranslatingThis && (
                                             <span className="ml-2 text-baby-blue-600 dark:text-baby-blue-400 flex items-center gap-1">
                                                 <Languages size={12} />
