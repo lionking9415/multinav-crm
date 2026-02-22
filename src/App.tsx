@@ -78,54 +78,9 @@ const App: React.FC = () => {
           communityEngagementService.getAll().catch(() => []) // Gracefully handle if table doesn't exist yet
         ]);
 
-        if (dbClients.length > 0) {
-          setClients(dbClients);
-        } else {
-          // Use mock data if database is empty
-        const mockClients: Client[] = [
-            { id: 'C4F2A1', fullName: 'John Doe', sex: 'Male', dob: '1985-05-15', age: 39, ethnicity: 'Chinese', countryOfBirth: 'China', languages: ['Mandarin', 'English'], referralSource: 'GP', referralDate: '2024-04-10', password: 'pass123' },
-            { id: 'C8B9D3', fullName: 'Jane Smith', sex: 'Female', dob: '1992-08-22', age: 31, ethnicity: 'Afghan', countryOfBirth: 'Afghanistan', languages: ['Dari', 'English'], referralSource: 'Community Org', referralDate: '2024-05-01', password: 'pass123' },
-            { id: 'C1E0F5', fullName: 'Abioye Abebe', sex: 'Male', dob: '1995-02-10', age: 29, ethnicity: 'Sudanese', countryOfBirth: 'Sudan', languages: ['Arabic', 'English'], referralSource: 'Hospital', referralDate: '2024-03-15', password: 'pass123' },
-            { id: 'C7A6B8', fullName: 'Lien Nguyen', sex: 'Female', dob: '1978-11-30', age: 45, ethnicity: 'Vietnamese', countryOfBirth: 'Vietnam', languages: ['Vietnamese'], referralSource: 'GP', referralDate: '2024-04-20', password: 'pass123' },
-            { id: 'C2D3E4', fullName: 'Fatima Al-Jamil', sex: 'Female', dob: '2001-07-19', age: 22, ethnicity: 'Syrian', countryOfBirth: 'Syria', languages: ['Arabic'], referralSource: 'Self', referralDate: '2024-05-12', password: 'pass123' },
-            { id: 'C9F8A7', fullName: 'Chen Wei', sex: 'Male', dob: '1998-01-05', age: 26, ethnicity: 'Chinese', countryOfBirth: 'China', languages: ['Mandarin'], referralSource: 'Community Org', referralDate: '2024-02-28', password: 'pass123' },
-            { id: 'C6B5C4', fullName: 'Asha Sharma', sex: 'Female', dob: '1989-09-03', age: 34, ethnicity: 'Indian', countryOfBirth: 'India', languages: ['Hindi', 'English'], referralSource: 'Family/Friend', referralDate: '2024-06-01', password: 'pass123' },
-            { id: 'C3D2E1', fullName: 'David Okoro', sex: 'Male', dob: '1993-04-25', age: 31, ethnicity: 'Nigerian', countryOfBirth: 'Nigeria', languages: ['English'], referralSource: 'GP', referralDate: '2024-05-18', password: 'pass123' },
-            { id: 'C0F9E8', fullName: 'Sofia Rossi', sex: 'Female', dob: '1965-12-12', age: 58, ethnicity: 'Italian', countryOfBirth: 'Italy', languages: ['Italian', 'English'], referralSource: 'Hospital', referralDate: '2024-01-22', password: 'pass123' },
-            { id: 'C5A4B3', fullName: 'Jamal Hussein', sex: 'Male', dob: '1990-06-08', age: 34, ethnicity: 'Somali', countryOfBirth: 'Somalia', languages: ['Somali', 'English'], referralSource: 'NGO', referralDate: '2024-03-05', password: 'pass123' }
-        ];
-        setClients(mockClients);
-        }
+        setClients(dbClients);
         
-        if (dbActivities.length > 0) {
-          setActivities(dbActivities);
-        } else {
-          // Use mock activities if database is empty
-        const mockActivities: HealthActivity[] = [
-            // Navigator activities
-            { id: 'a1', clientId: 'C4F2A1', date: '2024-05-20', navigationAssistance: ['Appointment Scheduling'], servicesAccessed: ['GP / Primary Care', 'Specialists'], referralsMade: 'Referred to cardiologist', followUpActions: 'Booked follow-up appointment', educationalResources: ['Cardiovascular health / Hypertension'], preventiveServices: [], maternalChildHealth: [], createdBy: 'navigator@multinav.com', createdByName: 'Health Navigator', createdByRole: 'navigator', location: 'Stirling' },
-            { id: 'a2', clientId: 'C8B9D3', date: '2024-05-22', navigationAssistance: ['Interpreter Support', 'Care Coordination'], servicesAccessed: ['Mental Health', 'GP / Primary Care'], referralsMade: 'Referred to psychologist', followUpActions: 'Scheduled weekly sessions', educationalResources: ['Mental health support services'], preventiveServices: [], maternalChildHealth: [], createdBy: 'navigator@multinav.com', createdByName: 'Health Navigator', createdByRole: 'navigator', location: 'Stirling' },
-            { id: 'a3', clientId: 'C1E0F5', date: '2024-04-01', navigationAssistance: ['Medicare Enrollment'], servicesAccessed: ['GP / Primary Care'], referralsMade: 'N/A', followUpActions: 'Client successfully enrolled in Medicare.', educationalResources: [], preventiveServices: ['Immunisation'], maternalChildHealth: [], createdBy: 'navigator@multinav.com', createdByName: 'Health Navigator', createdByRole: 'navigator', location: 'Stirling' },
-            // Coordinator activities
-            { id: 'a4', clientId: 'C7A6B8', date: '2024-04-25', navigationAssistance: ['Appointment Scheduling', 'Interpreter Support'], servicesAccessed: ['Dental'], referralsMade: 'Referred to public dental clinic', followUpActions: 'Awaiting appointment confirmation', educationalResources: [], preventiveServices: [], maternalChildHealth: [], createdBy: 'coordinator@multinav.com', createdByName: 'Program Coordinator', createdByRole: 'coordinator', location: 'Canning' },
-            { id: 'a5', clientId: 'C2D3E4', date: '2024-05-15', navigationAssistance: ['Care Coordination'], servicesAccessed: ['Maternal / Child Health Services', 'GP / Primary Care'], referralsMade: 'N/A', followUpActions: 'Connected with local MCH nurse.', educationalResources: [], preventiveServices: [], maternalChildHealth: ['Prenatal / Pregnancy Services', 'Infant / Child Health Checks'], createdBy: 'coordinator@multinav.com', createdByName: 'Program Coordinator', createdByRole: 'coordinator', location: 'Gosnells' },
-            // More navigator activities spread across different locations
-            { id: 'a6', clientId: 'C9F8A7', date: '2024-03-10', navigationAssistance: ['Transport Assistance'], servicesAccessed: ['Specialists', 'Diagnostic Tests'], referralsMade: 'N/A', followUpActions: 'Arranged transport for MRI scan.', educationalResources: [], preventiveServices: [], maternalChildHealth: [], createdBy: 'navigator@multinav.com', createdByName: 'Health Navigator', createdByRole: 'navigator', location: 'Swan' },
-            { id: 'a7', clientId: 'C6B5C4', date: '2024-06-05', navigationAssistance: ['Appointment Scheduling'], servicesAccessed: ['GP / Primary Care'], referralsMade: 'N/A', followUpActions: 'General check-up booked.', educationalResources: ['Diabetes prevention and management'], preventiveServices: ['Bowel Screening'], maternalChildHealth: [], createdBy: 'navigator@multinav.com', createdByName: 'Health Navigator', createdByRole: 'navigator', location: 'Wanneroo' },
-            // More coordinator activities
-            { id: 'a8', clientId: 'C3D2E1', date: '2024-05-28', navigationAssistance: ['Patient Rights and Responsibilities'], servicesAccessed: ['GP / Primary Care'], referralsMade: 'N/A', followUpActions: 'Provided information on patient advocacy.', educationalResources: [], preventiveServices: [], maternalChildHealth: [], createdBy: 'coordinator@multinav.com', createdByName: 'Program Coordinator', createdByRole: 'coordinator', location: 'Mandurah' },
-            { id: 'a9', clientId: 'C0F9E8', date: '2024-02-15', navigationAssistance: ['Care Coordination'], servicesAccessed: ['Specialists'], referralsMade: 'Follow up with geriatrician', followUpActions: 'Coordinated with family for support.', educationalResources: ['Medication adherence and safety'], preventiveServices: [], maternalChildHealth: [], createdBy: 'coordinator@multinav.com', createdByName: 'Program Coordinator', createdByRole: 'coordinator', location: 'Canning' },
-            // Admin activities (for testing/demo)
-            { id: 'a10', clientId: 'C5A4B3', date: '2024-03-20', navigationAssistance: ['Interpreter Support'], servicesAccessed: ['Mental Health'], referralsMade: 'N/A', followUpActions: 'Attended session with interpreter.', educationalResources: ['Mental health support services'], preventiveServices: [], maternalChildHealth: [], createdBy: 'admin@multinav.com', createdByName: 'System Administrator', createdByRole: 'admin', location: 'Stirling' },
-            // More activities distributed among staff
-            { id: 'a11', clientId: 'C4F2A1', date: '2024-06-10', navigationAssistance: ['Care Coordination'], servicesAccessed: ['Diagnostic Tests'], referralsMade: 'N/A', followUpActions: 'Followed up on test results.', educationalResources: [], preventiveServices: [], maternalChildHealth: [], createdBy: 'navigator@multinav.com', createdByName: 'Health Navigator', createdByRole: 'navigator', location: 'Canning' },
-            { id: 'a12', clientId: 'C1E0F5', date: '2024-05-05', navigationAssistance: ['Appointment Scheduling'], servicesAccessed: ['GP / Primary Care'], referralsMade: 'N/A', followUpActions: 'Booked annual physical.', educationalResources: [], preventiveServices: ['Immunisation'], maternalChildHealth: [], createdBy: 'navigator@multinav.com', createdByName: 'Health Navigator', createdByRole: 'navigator', location: 'Gosnells' },
-            { id: 'a13', clientId: 'C2D3E4', date: '2024-06-02', navigationAssistance: ['Interpreter Support'], servicesAccessed: ['Maternal / Child Health Services'], referralsMade: 'N/A', followUpActions: 'Scheduled 6-week post-natal check.', educationalResources: [], preventiveServices: [], maternalChildHealth: ['Breastfeeding Support'], createdBy: 'coordinator@multinav.com', createdByName: 'Program Coordinator', createdByRole: 'coordinator', location: 'Stirling' },
-            { id: 'a14', clientId: 'C6B5C4', date: '2024-06-11', navigationAssistance: ['Care Coordination'], servicesAccessed: ['Specialists'], referralsMade: 'Referred to endocrinologist', followUpActions: 'Appointment made for July.', educationalResources: ['Diabetes prevention and management'], preventiveServices: [], maternalChildHealth: [], createdBy: 'coordinator@multinav.com', createdByName: 'Program Coordinator', createdByRole: 'coordinator', location: 'Swan' },
-            { id: 'a15', clientId: 'C8B9D3', date: '2024-06-15', navigationAssistance: ['Appointment Scheduling'], servicesAccessed: ['Mental Health'], referralsMade: 'N/A', followUpActions: 'Booked next therapy session.', educationalResources: [], preventiveServices: [], maternalChildHealth: [], createdBy: 'navigator@multinav.com', createdByName: 'Health Navigator', createdByRole: 'navigator', location: 'Wanneroo' }
-        ];
-        setActivities(mockActivities);
-        }
+        setActivities(dbActivities);
         
         // Load workforce data
         if (Object.keys(dbWorkforce).length > 0) {
