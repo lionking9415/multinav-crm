@@ -241,22 +241,40 @@ export async function initiate2FA(userId: string, userEmail: string, userName: s
 }
 
 /**
- * Check if user is verified via magic link
- * This is called after user clicks the link in their email
+ * Verify a 6-digit OTP code entered by the user
+ * Uses Supabase Auth verifyOtp with type 'email'
  */
-export async function checkVerificationStatus(): Promise<{ verified: boolean; session: any }> {
+export async function verify2FACode(email: string, token: string): Promise<{ success: boolean; message: string }> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    console.log('[2FA] Verifying OTP code for:', email);
     
-    if (session) {
-      console.log('[2FA] User is verified via magic link');
-      return { verified: true, session };
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email'
+    });
+
+    if (error) {
+      console.error('[2FA] OTP verification error:', error);
+      
+      if (error.message.includes('expired') || error.message.includes('Token has expired')) {
+        return { success: false, message: 'Code has expired. Please request a new one.' };
+      }
+      if (error.message.includes('invalid') || error.message.includes('Invalid')) {
+        return { success: false, message: 'Invalid code. Please check and try again.' };
+      }
+      
+      return { success: false, message: error.message };
     }
-    
-    return { verified: false, session: null };
+
+    // Clean up the Supabase session — we use our own auth system
+    await supabase.auth.signOut();
+
+    console.log('[2FA] OTP verified successfully');
+    return { success: true, message: 'Verification successful' };
   } catch (error) {
-    console.error('[2FA] Error checking verification status:', error);
-    return { verified: false, session: null };
+    console.error('[2FA] Error verifying OTP:', error);
+    return { success: false, message: 'Verification failed. Please try again.' };
   }
 }
 
