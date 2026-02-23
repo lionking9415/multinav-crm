@@ -139,7 +139,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers }) => {
       phoneNumber: user.phoneNumber || '',
       twoFactorEnabled: user.twoFactorEnabled || false
     });
-    setShowAddForm(true);
+    setShowAddForm(false);
   };
 
   const toggleLocation = (location: string) => {
@@ -208,11 +208,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers }) => {
         </div>
       )}
 
-      {/* Add/Edit Form */}
-      {showAddForm && (
+      {/* Add New User Form */}
+      {showAddForm && !editingUser && (
         <Card>
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">
-            {editingUser ? 'Edit User' : 'Add New User'}
+            Add New User
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -390,63 +390,226 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers }) => {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <td className="py-3 px-4">
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{user.fullName}</div>
-                    <div className="text-xs text-gray-500">ID: {user.id}</div>
-                  </td>
-                  <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{user.email}</td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                      {getRoleIcon(user.role)}
-                      <span className="capitalize">{user.role}</span>
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-1">
-                      {user.assignedLocations.map(loc => (
-                        <span key={loc} className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
-                          {loc}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      user.isActive 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    {user.twoFactorEnabled ? (
-                      <Check className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <X className="w-5 h-5 text-gray-400" />
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => startEdit(user)}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                        title="Edit user"
-                      >
-                        <Edit2 className="w-4 h-4 text-blue-600" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                        title="Delete user"
-                        disabled={user.email === 'admin@multinav.com'} // Protect default admin
-                      >
-                        <Trash2 className={`w-4 h-4 ${user.email === 'admin@multinav.com' ? 'text-gray-400' : 'text-red-600'}`} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <React.Fragment key={user.id}>
+                  <tr className={`border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 ${editingUser?.id === user.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                    <td className="py-3 px-4">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{user.fullName}</div>
+                      <div className="text-xs text-gray-500">ID: {user.id}</div>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{user.email}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                        {getRoleIcon(user.role)}
+                        <span className="capitalize">{user.role}</span>
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap gap-1">
+                        {user.assignedLocations.map(loc => (
+                          <span key={loc} className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                            {loc}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        user.isActive
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                      }`}>
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      {user.twoFactorEnabled ? (
+                        <Check className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <X className="w-5 h-5 text-gray-400" />
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => editingUser?.id === user.id ? resetForm() : startEdit(user)}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          title={editingUser?.id === user.id ? 'Cancel edit' : 'Edit user'}
+                        >
+                          <Edit2 className={`w-4 h-4 ${editingUser?.id === user.id ? 'text-gray-400' : 'text-blue-600'}`} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id)}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          title="Delete user"
+                          disabled={user.email === 'admin@multinav.com'}
+                        >
+                          <Trash2 className={`w-4 h-4 ${user.email === 'admin@multinav.com' ? 'text-gray-400' : 'text-red-600'}`} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Inline edit form row */}
+                  {editingUser?.id === user.id && (
+                    <tr className="border-b dark:border-gray-700 bg-blue-50 dark:bg-blue-900/10">
+                      <td colSpan={7} className="px-4 py-4">
+                        <div className="border border-blue-200 dark:border-blue-700 rounded-xl p-5 bg-white dark:bg-gray-800 shadow-sm">
+                          <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                            <Edit2 className="w-4 h-4 text-blue-600" />
+                            Edit User — {user.fullName}
+                          </h3>
+                          <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Full Name */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Full Name *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={formData.fullName}
+                                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                  placeholder="John Smith"
+                                  required
+                                />
+                              </div>
+
+                              {/* Email */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Email Address *
+                                </label>
+                                <div className="relative">
+                                  <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                                  <input
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    required
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Password */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  New Password (leave blank to keep current)
+                                </label>
+                                <div className="relative">
+                                  <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                                  <input
+                                    type="password"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    placeholder="Enter new password to change"
+                                    minLength={formData.password ? 8 : 0}
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Only fill this if you want to reset the user's password</p>
+                              </div>
+
+                              {/* Role */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Role *
+                                </label>
+                                <select
+                                  value={formData.role}
+                                  onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                >
+                                  <option value="navigator">Navigator (Basic Access)</option>
+                                  <option value="coordinator">Coordinator (Extended Access)</option>
+                                  <option value="admin">Administrator (Full Access)</option>
+                                </select>
+                              </div>
+
+                              {/* Phone Number */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Phone Number (for 2FA)
+                                </label>
+                                <div className="relative">
+                                  <Phone className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                                  <input
+                                    type="tel"
+                                    value={formData.phoneNumber}
+                                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    placeholder="+61 400 000 000"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* 2FA Toggle */}
+                              <div className="flex items-center space-x-2 pt-6">
+                                <input
+                                  type="checkbox"
+                                  id={`twoFactor-${user.id}`}
+                                  checked={formData.twoFactorEnabled}
+                                  onChange={(e) => setFormData({ ...formData, twoFactorEnabled: e.target.checked })}
+                                  className="w-4 h-4 text-lime-green-600 border-gray-300 rounded focus:ring-lime-green-500"
+                                />
+                                <label htmlFor={`twoFactor-${user.id}`} className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Enable Two-Factor Authentication
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Location Assignment */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Assigned Locations * (Select one or more)
+                              </label>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                {LOCATIONS.map(location => (
+                                  <button
+                                    key={location}
+                                    type="button"
+                                    onClick={() => toggleLocation(location)}
+                                    className={`px-3 py-2 rounded-lg border-2 transition-all ${
+                                      formData.assignedLocations.includes(location)
+                                        ? 'border-lime-green-500 bg-lime-green-50 text-lime-green-700 dark:bg-lime-green-900 dark:text-lime-green-300'
+                                        : 'border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <MapPin className="w-4 h-4" />
+                                      <span className="ml-2">{location}</span>
+                                      {formData.assignedLocations.includes(location) && (
+                                        <Check className="w-4 h-4 ml-2" />
+                                      )}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Form Actions */}
+                            <div className="flex justify-end space-x-3 pt-3 border-t dark:border-gray-700">
+                              <button
+                                type="button"
+                                onClick={resetForm}
+                                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                className="px-4 py-2 bg-lime-green-500 text-white rounded-lg hover:bg-lime-green-600 transition-colors"
+                              >
+                                Update User
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
