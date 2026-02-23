@@ -13,6 +13,8 @@ export interface Client {
   postcode?: string;
   region?: string;
   password?: string;
+  phoneNumber?: string;
+  emergencyContactPhone?: string;
   /** User ID of the staff member assigned to this client (from users table). */
   assignedStaffId?: string;
 }

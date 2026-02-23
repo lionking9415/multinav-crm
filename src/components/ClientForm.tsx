@@ -28,7 +28,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, o
     postcode: initialClient?.postcode || '',
     region: initialClient?.region || '',
     password: initialClient?.password || '',
-    assignedStaffId: initialClient?.assignedStaffId || '',
+    phoneNumber: initialClient?.phoneNumber || '',
+    emergencyContactPhone: initialClient?.emergencyContactPhone || '',
+    assignedStaffId: initialClient?.assignedStaffId || ''
   });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -168,6 +170,36 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, o
           <div>
             <label htmlFor="referralDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Referral Date</label>
             <input type="date" name="referralDate" id="referralDate" value={client.referralDate} onChange={handleInputChange} required disabled={readOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" />
+          </div>
+
+          {/* Phone Number */}
+          <div>
+            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number (Optional)</label>
+            <input
+              type="tel"
+              name="phoneNumber"
+              id="phoneNumber"
+              value={client.phoneNumber || ''}
+              onChange={handleInputChange}
+              placeholder="+61 400 000 000"
+              disabled={readOnly}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          {/* Emergency Contact Phone */}
+          <div>
+            <label htmlFor="emergencyContactPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Emergency Contact Phone (Optional)</label>
+            <input
+              type="tel"
+              name="emergencyContactPhone"
+              id="emergencyContactPhone"
+              value={client.emergencyContactPhone || ''}
+              onChange={handleInputChange}
+              placeholder="+61 400 000 000"
+              disabled={readOnly}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+            />
           </div>
 
           {/* Address/Suburb */}
