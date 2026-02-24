@@ -29,6 +29,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, o
     region: initialClient?.region || '',
     password: initialClient?.password || '',
     phoneNumber: initialClient?.phoneNumber || '',
+    emergencyContactName: initialClient?.emergencyContactName || '',
     emergencyContactPhone: initialClient?.emergencyContactPhone || '',
     assignedStaffId: initialClient?.assignedStaffId || ''
   });
@@ -182,6 +183,21 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, o
               value={client.phoneNumber || ''}
               onChange={handleInputChange}
               placeholder="+61 400 000 000"
+              disabled={readOnly}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          {/* Emergency Contact Name */}
+          <div>
+            <label htmlFor="emergencyContactName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Emergency Contact Name (Optional)</label>
+            <input
+              type="text"
+              name="emergencyContactName"
+              id="emergencyContactName"
+              value={client.emergencyContactName || ''}
+              onChange={handleInputChange}
+              placeholder="Full name of emergency contact"
               disabled={readOnly}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
             />

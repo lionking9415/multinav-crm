@@ -9,11 +9,31 @@ export const ETHNICITY_OPTIONS = [
 ];
 
 export const COUNTRY_OPTIONS = [
-  "Afghanistan", "Australia", "China", "Egypt", "Ethiopia", "Fiji", "France", "Germany",
-  "India", "Indonesia", "Iran", "Iraq", "Ireland", "Italy", "Japan", "Kenya", "Lebanon",
-  "Malaysia", "Myanmar", "New Zealand", "Nigeria", "Pakistan", "Philippines", "Somalia",
-  "South Africa", "South Sudan", "Sri Lanka", "Sudan", "Syria", "Thailand", "United Kingdom",
-  "United States", "Vietnam", "Zimbabwe"
+  "Afghanistan", "Albania", "Algeria", "Angola", "Argentina", "Australia", "Azerbaijan",
+  "Bangladesh", "Bolivia", "Bosnia and Herzegovina", "Brazil", "Burundi",
+  "Cambodia", "Cameroon", "Canada", "Chad", "Chile", "China", "Colombia", "Congo (DRC)",
+  "Croatia", "Cuba", "Cyprus",
+  "DR Congo", "Denmark",
+  "Egypt", "El Salvador", "Eritrea", "Ethiopia",
+  "Fiji", "France",
+  "Germany", "Ghana", "Greece", "Guatemala",
+  "Haiti", "Honduras", "Hong Kong",
+  "India", "Indonesia", "Iran", "Iraq", "Ireland", "Italy",
+  "Japan", "Jordan",
+  "Kazakhstan", "Kenya", "Korea (North)", "Korea (South)", "Kuwait", "Kyrgyzstan",
+  "Laos", "Lebanon", "Liberia", "Libya",
+  "Malaysia", "Mali", "Mexico", "Morocco", "Mozambique", "Myanmar",
+  "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Nigeria",
+  "Pakistan", "Palestine", "Papua New Guinea", "Peru", "Philippines", "Poland",
+  "Romania", "Russia", "Rwanda",
+  "Saudi Arabia", "Samoa", "Senegal", "Sierra Leone", "Singapore", "Solomon Islands",
+  "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka",
+  "Sudan", "Syria",
+  "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Tonga", "Turkey",
+  "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uzbekistan",
+  "Vanuatu", "Venezuela", "Vietnam",
+  "Yemen",
+  "Zambia", "Zimbabwe"
 ];
 
 export const LANGUAGE_OPTIONS = [

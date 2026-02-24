@@ -49,6 +49,7 @@ export const clientService = {
       region: client.region,
       password: client.password_hash || '', // Return password for staff editing
       phoneNumber: client.phone_number || undefined,
+      emergencyContactName: client.emergency_contact_name || undefined,
       emergencyContactPhone: client.emergency_contact_phone || undefined,
       assignedStaffId: client.assigned_staff_id || undefined
     }));
@@ -73,6 +74,7 @@ export const clientService = {
         region: client.region,
         password_hash: client.password ? await hashPassword(client.password) : null,
         phone_number: client.phoneNumber || null,
+        emergency_contact_name: client.emergencyContactName || null,
         emergency_contact_phone: client.emergencyContactPhone || null,
         assigned_staff_id: client.assignedStaffId || null
       })
@@ -104,6 +106,7 @@ export const clientService = {
     if (client.region !== undefined) updateData.region = client.region;
     if (client.assignedStaffId !== undefined) updateData.assigned_staff_id = client.assignedStaffId || null;
     if (client.phoneNumber !== undefined) updateData.phone_number = client.phoneNumber || null;
+    if (client.emergencyContactName !== undefined) updateData.emergency_contact_name = client.emergencyContactName || null;
     if (client.emergencyContactPhone !== undefined) updateData.emergency_contact_phone = client.emergencyContactPhone || null;
     // Update password if provided (non-empty string)
     if (client.password && client.password.trim() !== '') {
@@ -135,6 +138,7 @@ export const clientService = {
       postcode: data.postcode,
       region: data.region,
       phoneNumber: data.phone_number || undefined,
+      emergencyContactName: data.emergency_contact_name || undefined,
       emergencyContactPhone: data.emergency_contact_phone || undefined,
       assignedStaffId: data.assigned_staff_id || undefined
     };
@@ -216,6 +220,7 @@ export const clientService = {
       postcode: data.postcode,
       region: data.region,
       phoneNumber: data.phone_number || undefined,
+      emergencyContactName: data.emergency_contact_name || undefined,
       emergencyContactPhone: data.emergency_contact_phone || undefined,
       assignedStaffId: data.assigned_staff_id || undefined
     };

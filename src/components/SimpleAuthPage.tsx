@@ -56,28 +56,53 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
     const urlParams = new URLSearchParams(window.location.search);
     const isPasswordReset = urlParams.get('reset_password') === 'true';
     const userId = urlParams.get('user_id');
-    
-    if (isPasswordReset && userId) {
-      console.log('[PasswordReset] Detected password reset redirect for user:', userId);
-      
-      // Listen for auth state change (password recovery event)
+
+    // Supabase delivers the recovery token in the URL hash fragment:
+    // #access_token=...&type=recovery
+    const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+    const hashType = hashParams.get('type');
+    const isHashRecovery = hashType === 'recovery';
+
+    if (isHashRecovery) {
+      // Hash-based recovery: Supabase will fire PASSWORD_RECOVERY via onAuthStateChange
+      console.log('[PasswordReset] Detected hash-based password recovery flow');
+
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('[PasswordReset] Auth state changed:', event);
-        
-        // PASSWORD_RECOVERY is triggered when user clicks reset password link
+
+        if (event === 'PASSWORD_RECOVERY' && session) {
+          console.log('[PasswordReset] PASSWORD_RECOVERY event received');
+
+          // Extract user_id from query params if present, otherwise use session user id
+          const qUserId = new URLSearchParams(window.location.search).get('user_id');
+          setResetUserId(qUserId || session.user.id);
+          setShowResetPassword(true);
+
+          // Clear URL so a refresh doesn't retrigger
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    } else if (isPasswordReset && userId) {
+      // Legacy query-param-based flow
+      console.log('[PasswordReset] Detected query-param password reset redirect for user:', userId);
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[PasswordReset] Auth state changed:', event);
+
         if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
           console.log('[PasswordReset] User verified via reset password link');
           setShowResetPassword(true);
           setResetUserId(userId);
-          
-          // Sign out from Supabase Auth (we only used it for verification)
+
           await supabase.auth.signOut();
-          
-          // Clear URL params
           window.history.replaceState({}, document.title, window.location.pathname);
         }
       });
-      
+
       return () => {
         subscription.unsubscribe();
       };
@@ -102,17 +127,47 @@ const SimpleAuthPage: React.FC<SimpleAuthPageProps> = ({ onStaffLogin, onPatient
     setResetLoading(true);
     
     try {
-      // Update password in our custom users table
-      const { error } = await supabase
-        .from('users')
-        .update({ password_hash: newPassword })
-        .eq('id', resetUserId);
-      
-      if (error) {
-        console.error('[PasswordReset] Error updating password:', error);
+      // Also update the Supabase Auth password so the session is valid
+      const { error: authError } = await supabase.auth.updateUser({ password: newPassword });
+      if (authError) {
+        console.warn('[PasswordReset] Supabase auth password update failed (non-fatal):', authError.message);
+      }
+
+      // Determine how to look up user in our custom users table.
+      // resetUserId is either a custom "USR..." ID (from query param) or a Supabase UUID (fallback).
+      // If it looks like a UUID (contains hyphens and is 36 chars), look up by email from session instead.
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(resetUserId);
+      let dbError;
+
+      if (!isUUID && resetUserId) {
+        // Custom USR... ID — update directly
+        const { error } = await supabase
+          .from('users')
+          .update({ password_hash: newPassword })
+          .eq('id', resetUserId);
+        dbError = error;
+      } else {
+        // Fallback: look up by email from current session
+        const { data: { session } } = await supabase.auth.getSession();
+        const userEmail = session?.user?.email;
+        if (userEmail) {
+          const { error } = await supabase
+            .from('users')
+            .update({ password_hash: newPassword })
+            .eq('email', userEmail);
+          dbError = error;
+        } else {
+          dbError = { message: 'Could not identify user. Please request a new reset link.' };
+        }
+      }
+
+      if (dbError) {
+        console.error('[PasswordReset] Error updating password:', dbError);
         setResetError('Failed to update password. Please try again.');
       } else {
         console.log('[PasswordReset] Password updated successfully');
+        // Sign out of Supabase Auth session now that password is updated
+        await supabase.auth.signOut();
         setResetSuccess(true);
       }
     } catch (err) {

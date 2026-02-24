@@ -14,6 +14,7 @@ export interface Client {
   region?: string;
   password?: string;
   phoneNumber?: string;
+  emergencyContactName?: string;
   emergencyContactPhone?: string;
   /** User ID of the staff member assigned to this client (from users table). */
   assignedStaffId?: string;
