@@ -10,9 +10,10 @@ interface ClientFormProps {
   onSave: (client: Client) => void;
   onCancel: () => void;
   readOnly?: boolean;
+  canAssignStaff?: boolean;
 }
 
-const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, onCancel, readOnly }) => {
+const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, onCancel, readOnly, canAssignStaff = true }) => {
   const [client, setClient] = useState<Client>({
     id: initialClient?.id || '',
     fullName: initialClient?.fullName || '',
@@ -271,26 +272,38 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, o
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Select the primary region for this client</p>
           </div>
 
-          {/* Assigned Staff */}
-          <div>
-            <label htmlFor="assignedStaffId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assigned Staff</label>
-            <select
-              id="assignedStaffId"
-              name="assignedStaffId"
-              value={client.assignedStaffId || ''}
-              onChange={(e) => setClient({ ...client, assignedStaffId: e.target.value || undefined })}
-              disabled={readOnly}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
-            >
-              <option value="">No staff assigned</option>
-              {users.filter(u => u.isActive).map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.fullName || user.email} {user.role ? `(${user.role})` : ''}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Assign a staff member already registered in the system</p>
-          </div>
+          {/* Assigned Staff — visible to admin/coordinator only */}
+          {canAssignStaff ? (
+            <div>
+              <label htmlFor="assignedStaffId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assigned Staff</label>
+              <select
+                id="assignedStaffId"
+                name="assignedStaffId"
+                value={client.assignedStaffId || ''}
+                onChange={(e) => setClient({ ...client, assignedStaffId: e.target.value || undefined })}
+                disabled={readOnly}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+              >
+                <option value="">No staff assigned</option>
+                {users.filter(u => u.isActive).map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName || user.email} {user.role ? `(${user.role})` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Assign a staff member already registered in the system</p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assigned Staff</label>
+              <div className="mt-1 flex items-center h-10 px-3 w-full rounded-md border border-gray-300 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 text-sm text-gray-500 dark:text-gray-400">
+                {client.assignedStaffId
+                  ? (users.find(u => u.id === client.assignedStaffId)?.fullName || users.find(u => u.id === client.assignedStaffId)?.email || 'Unknown staff')
+                  : 'No staff assigned'}
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Staff assignment is managed by coordinators and admins</p>
+            </div>
+          )}
 
            {/* Password */}
           <div className="md:col-span-2">

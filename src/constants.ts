@@ -1,11 +1,15 @@
 export const SEX_OPTIONS = ['Male', 'Female', 'Intersex', 'Other', 'Prefer not to say'];
 
 export const ETHNICITY_OPTIONS = [
-  "Afghan", "Australian", "Chinese", "English", "Filipino", "Hazara",
-  "Indian", "Iranian", "Iraqi", "Italian", "Karen", "Korean", "Kurdish",
-  "Lebanese", "Malaysian", "New Zealander", "Pakistani", "Rohingya", "Samoan",
-  "Scottish", "Somali", "South African", "Sri Lankan", "Sudanese", "Syrian",
-  "Thai", "Tongan", "Vietnamese"
+  "Afghan", "Afrikaner", "Australian", "Bangladeshi", "Burmese", "Cambodian",
+  "Chinese", "Congolese", "Egyptian", "English", "Eritrean", "Ethiopian",
+  "Fijian", "Filipino", "Ghanaian", "Greek", "Hazara", "Indian", "Indonesian",
+  "Iranian", "Iraqi", "Italian", "Japanese", "Karen", "Kenyan", "Korean",
+  "Kurdish", "Lao", "Lebanese", "Libyan", "Malaysian", "Moroccan", "Nepali",
+  "New Zealander", "Nigerian", "Pakistani", "Palestinian", "Rohingya", "Rwandan",
+  "Samoan", "Scottish", "Somali", "South African", "South Sudanese", "Sri Lankan",
+  "Sudanese", "Syrian", "Tamil", "Thai", "Timorese", "Tongan", "Turkish",
+  "Ugandan", "Ukrainian", "Vietnamese", "Yemeni", "Zimbabwean"
 ];
 
 export const COUNTRY_OPTIONS = [
@@ -37,11 +41,13 @@ export const COUNTRY_OPTIONS = [
 ];
 
 export const LANGUAGE_OPTIONS = [
-  "Arabic", "Assyrian", "Auslan", "Burmese", "Cantonese", "Dari", "Dinka", "English",
-  "Farsi", "Filipino", "French", "Greek", "Hazaragi", "Hindi", "Indonesian", "Italian",
-  "Japanese", "Karen", "Khmer", "Korean", "Kurdish", "Mandarin", "Oromo", "Pashto",
-  "Punjabi", "Rohingyal", "Russian", "Sinhalese", "Somali", "Spanish", "Swahili", "Tagalog",
-  "Tamil", "Thai", "Tigrinya", "Urdu", "Vietnamese"
+  "Afrikaans", "Amharic", "Arabic", "Assyrian", "Auslan", "Bengali", "Bosnian",
+  "Burmese", "Cantonese", "Dari", "Dinka", "English", "Farsi", "Filipino",
+  "French", "Greek", "Hazaragi", "Hindi", "Indonesian", "Italian", "Japanese",
+  "Karen", "Khmer", "Korean", "Kurdish", "Lao", "Malay", "Mandarin", "Nepali",
+  "Nuer", "Oromo", "Pashto", "Polish", "Portuguese", "Punjabi", "Rohingya",
+  "Russian", "Sinhalese", "Somali", "Spanish", "Swahili", "Tagalog", "Tamil",
+  "Thai", "Tigrinya", "Turkish", "Ukrainian", "Urdu", "Vietnamese", "Yoruba", "Zulu"
 ];
 
 export const REFERRAL_SOURCE_OPTIONS = [

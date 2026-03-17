@@ -157,7 +157,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
   };
 
   const getAssignedStaffName = (assignedStaffId?: string) => {
-    if (!assignedStaffId) return '—';
+    if (!assignedStaffId) return 'No staff assigned';
     const user = users.find(u => u.id === assignedStaffId);
     return user ? (user.fullName || user.email) : assignedStaffId;
   };
@@ -170,6 +170,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
         onSave={handleSave}
         onCancel={handleCancel}
         readOnly={isViewOnly}
+        canAssignStaff={!isNavigator}
       />
     );
   }
