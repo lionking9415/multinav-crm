@@ -8,6 +8,7 @@ export interface Client {
   countryOfBirth: string;
   languages: string[];
   referralSource: string;
+  referringOrganisation?: string;
   referralDate: string;
   address?: string;
   postcode?: string;
@@ -26,6 +27,7 @@ export interface HealthActivity {
     date: string;
     navigationAssistance: string[];
     servicesAccessed: string[];
+    reasonForAssistance?: string;
     referralsMade: string;
     followUpActions: string;
     educationalResources: string[];

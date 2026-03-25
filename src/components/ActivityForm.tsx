@@ -26,6 +26,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
     date: initialActivity?.date || new Date().toISOString().split('T')[0],
     navigationAssistance: initialActivity?.navigationAssistance || [],
     servicesAccessed: initialActivity?.servicesAccessed || [],
+    reasonForAssistance: initialActivity?.reasonForAssistance || '',
     referralsMade: initialActivity?.referralsMade || '',
     followUpActions: initialActivity?.followUpActions || '',
     educationalResources: initialActivity?.educationalResources || [],
@@ -174,12 +175,17 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ initialActivity, clients, o
             <Accordion title="Notes & Follow-up">
               <div className="space-y-6">
                 <div>
+                  <label htmlFor="reasonForAssistance" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason for Assistance</label>
+                  <textarea name="reasonForAssistance" id="reasonForAssistance" value={activity.reasonForAssistance} onChange={handleInputChange} rows={3} disabled={readOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" placeholder="Describe the reason for assistance..." />
+                </div>
+                
+                <div>
                   <label htmlFor="referralsMade" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Referrals Made</label>
                   <textarea name="referralsMade" id="referralsMade" value={activity.referralsMade} onChange={handleInputChange} rows={3} disabled={readOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" />
                 </div>
                 
                 <div>
-                  <label htmlFor="followUpActions" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Follow-up Actions Taken</label>
+                  <label htmlFor="followUpActions" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Follow-up Actions</label>
                   <textarea name="followUpActions" id="followUpActions" value={activity.followUpActions} onChange={handleInputChange} rows={3} disabled={readOnly} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed" />
                 </div>
               </div>

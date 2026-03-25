@@ -33,22 +33,9 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
   }
   
   // Filter activities based on user role and ownership
-  const userFilteredActivities = activities.filter(activity => {
-      // Admins and coordinators can see all activities
-      if (currentUser?.role === 'admin' || currentUser?.role === 'coordinator') {
-          return true;
-      }
-      
-      // Navigators can only see their own activities
-      if (currentUser?.role === 'navigator') {
-          return activity.createdBy === currentUser.email || 
-                 activity.createdByName === currentUser.name ||
-                 // For legacy activities without createdBy
-                 (!activity.createdBy && !activity.createdByName);
-      }
-      
-      return true; // Fallback for demo mode
-  });
+  // NOTE: All users (including navigators) can now VIEW all activities
+  // Edit permissions are controlled separately in the action buttons
+  const userFilteredActivities = activities;
   
   const filteredActivities = userFilteredActivities.filter(activity => {
       const clientName = getClientName(activity.clientId).toLowerCase();
@@ -211,7 +198,7 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
             {/* Show whose activities are being displayed */}
             {currentUser?.role === 'navigator' && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Showing your activities only
+                    Viewing all team activities (you can only edit your own)
                 </p>
             )}
             {currentUser?.role === 'coordinator' && (
@@ -316,9 +303,22 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{activity.createdByName || activity.createdBy || '—'}</td>
                     <td className="px-6 py-4 text-right space-x-1">
                         {isNavigator ? (
-                            <button onClick={() => handleView(activity)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
-                                <Eye className="h-5 w-5" />
-                            </button>
+                            <>
+                                <button onClick={() => handleView(activity)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
+                                    <Eye className="h-5 w-5" />
+                                </button>
+                                {/* Navigators can only edit their own activities */}
+                                {(activity.createdBy === currentUser?.email || activity.createdByName === currentUser?.name) && (
+                                    <>
+                                        <button onClick={() => handleEdit(activity)} className="p-2 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Edit">
+                                            <Pencil className="h-5 w-5" />
+                                        </button>
+                                        <button onClick={() => handleDelete(activity.id)} className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Delete">
+                                            <Trash2 className="h-5 w-5" />
+                                        </button>
+                                    </>
+                                )}
+                            </>
                         ) : (
                             <>
                                 <button onClick={() => handleView(activity)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">

@@ -43,6 +43,7 @@ export const clientService = {
       countryOfBirth: client.country_of_birth,
       languages: client.languages || [],
       referralSource: client.referral_source,
+      referringOrganisation: client.referring_organisation || undefined,
       referralDate: client.referral_date,
       address: client.address,
       postcode: client.postcode,
@@ -68,6 +69,7 @@ export const clientService = {
         country_of_birth: client.countryOfBirth,
         languages: client.languages,
         referral_source: client.referralSource,
+        referring_organisation: client.referringOrganisation || null,
         referral_date: client.referralDate,
         address: client.address,
         postcode: client.postcode,
@@ -100,6 +102,7 @@ export const clientService = {
     if (client.countryOfBirth !== undefined) updateData.country_of_birth = client.countryOfBirth;
     if (client.languages !== undefined) updateData.languages = client.languages;
     if (client.referralSource !== undefined) updateData.referral_source = client.referralSource;
+    if (client.referringOrganisation !== undefined) updateData.referring_organisation = client.referringOrganisation || null;
     if (client.referralDate !== undefined) updateData.referral_date = client.referralDate;
     if (client.address !== undefined) updateData.address = client.address;
     if (client.postcode !== undefined) updateData.postcode = client.postcode;
@@ -133,6 +136,7 @@ export const clientService = {
       countryOfBirth: data.country_of_birth,
       languages: data.languages || [],
       referralSource: data.referral_source,
+      referringOrganisation: data.referring_organisation || undefined,
       referralDate: data.referral_date,
       address: data.address,
       postcode: data.postcode,
@@ -215,6 +219,7 @@ export const clientService = {
       countryOfBirth: data.country_of_birth,
       languages: data.languages || [],
       referralSource: data.referral_source,
+      referringOrganisation: data.referring_organisation || undefined,
       referralDate: data.referral_date,
       address: data.address,
       postcode: data.postcode,
@@ -243,6 +248,7 @@ export const activityService = {
       date: activity.activity_date,
       navigationAssistance: activity.navigation_assistance || [],
       servicesAccessed: activity.services_accessed || [],
+      reasonForAssistance: activity.reason_for_assistance || '',
       referralsMade: activity.referrals_made || '',
       followUpActions: activity.follow_up_actions || '',
       educationalResources: activity.educational_resources || [],
@@ -270,6 +276,7 @@ export const activityService = {
         activity_date: activity.date,
         navigation_assistance: activity.navigationAssistance,
         services_accessed: activity.servicesAccessed,
+        reason_for_assistance: activity.reasonForAssistance || '',
         referrals_made: activity.referralsMade,
         follow_up_actions: activity.followUpActions,
         educational_resources: activity.educationalResources,
@@ -301,6 +308,7 @@ export const activityService = {
     if (activity.date !== undefined) updateData.activity_date = activity.date;
     if (activity.navigationAssistance !== undefined) updateData.navigation_assistance = activity.navigationAssistance;
     if (activity.servicesAccessed !== undefined) updateData.services_accessed = activity.servicesAccessed;
+    if (activity.reasonForAssistance !== undefined) updateData.reason_for_assistance = activity.reasonForAssistance;
     if (activity.referralsMade !== undefined) updateData.referrals_made = activity.referralsMade;
     if (activity.followUpActions !== undefined) updateData.follow_up_actions = activity.followUpActions;
     if (activity.educationalResources !== undefined) updateData.educational_resources = activity.educationalResources;
