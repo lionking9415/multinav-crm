@@ -179,13 +179,22 @@ const HealthNavigationActivities: React.FC<HealthNavigationActivitiesProps> = ({
   };
 
   if (view === 'form') {
+    // Determine if form should be read-only
+    // Navigators can only edit their own activities
+    const isReadOnly = isViewOnly || (
+      isNavigator && 
+      selectedActivity && 
+      selectedActivity.createdBy !== currentUser?.email && 
+      selectedActivity.createdByName !== currentUser?.name
+    );
+    
     return (
       <ActivityForm
         initialActivity={selectedActivity}
         onSave={handleSave}
         onCancel={handleCancel}
         clients={clients}
-        readOnly={isViewOnly}
+        readOnly={isReadOnly}
       />
     );
   }
