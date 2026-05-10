@@ -20,8 +20,9 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [dateFilteredActivities, setDateFilteredActivities] = useState<HealthActivity[]>([]);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
-  const [loadTime, setLoadTime] = useState<{ fetch: number; compute: number } | null>(null);
+  const [loadTimeMs, setLoadTimeMs] = useState<number | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchStartTime = useRef<number>(0);
   
   // Helper function to calculate days between dates
   const getDaysBetween = (start: string, end: string) => {
@@ -34,23 +35,30 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
   // Server-side date filtering with debounce
   const fetchActivitiesByDate = useCallback(async (start: string, end: string) => {
     setIsLoadingActivities(true);
-    const fetchStart = performance.now();
+    fetchStartTime.current = performance.now();
+    console.time('[StaffPerformance] Fetch activities');
     try {
       const data = await activityService.getByDateRange(start, end);
-      const fetchMs = Math.round(performance.now() - fetchStart);
-      console.log(`[StaffPerformance] Fetched ${data.length} activities in ${fetchMs}ms`);
+      console.timeEnd('[StaffPerformance] Fetch activities');
+      console.log(`[StaffPerformance] Fetched ${data.length} activities for ${start} to ${end}`);
       setDateFilteredActivities(data);
-      setLoadTime(prev => ({ fetch: fetchMs, compute: prev?.compute || 0 }));
     } catch (err) {
+      console.timeEnd('[StaffPerformance] Fetch activities');
       console.error('[StaffPerformance] Failed to fetch activities by date range:', err);
+      console.time('[StaffPerformance] Client-side fallback filter');
       const startDate = new Date(start);
       const endDate = new Date(end);
-      setDateFilteredActivities(activities.filter(a => {
+      const fallback = activities.filter(a => {
         const d = new Date(a.date);
         return d >= startDate && d <= endDate;
-      }));
-      setLoadTime(prev => ({ fetch: Math.round(performance.now() - fetchStart), compute: prev?.compute || 0 }));
+      });
+      console.timeEnd('[StaffPerformance] Client-side fallback filter');
+      console.log(`[StaffPerformance] Fallback: ${fallback.length} activities`);
+      setDateFilteredActivities(fallback);
     } finally {
+      const elapsed = Math.round(performance.now() - fetchStartTime.current);
+      setLoadTimeMs(elapsed);
+      console.log(`[StaffPerformance] Total fetch time: ${elapsed}ms`);
       setIsLoadingActivities(false);
     }
   }, [activities]);
@@ -76,7 +84,8 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
 
   // Apply staff and location filters on server-fetched data
   const filteredActivities = useMemo(() => {
-    return dateFilteredActivities.filter(activity => {
+    const t0 = performance.now();
+    const result = dateFilteredActivities.filter(activity => {
       const staffMatch = selectedStaff === 'all' || 
         activity.createdBy === selectedStaff ||
         activity.createdBy === selectedStaff.toLowerCase() ||
@@ -87,10 +96,13 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       
       return staffMatch && locationMatch;
     });
+    console.log(`[StaffPerformance] Filter: ${result.length}/${dateFilteredActivities.length} activities in ${Math.round(performance.now() - t0)}ms`);
+    return result;
   }, [dateFilteredActivities, selectedStaff, selectedLocation, staffMembers]);
 
   // Build activity lookup map by staff email — O(N) instead of O(N×M)
   const activityByStaff = useMemo(() => {
+    const t0 = performance.now();
     const map = new Map<string, HealthActivity[]>();
     const unattributed: HealthActivity[] = [];
 
@@ -119,12 +131,13 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       }
     });
 
+    console.log(`[StaffPerformance] Lookup map: ${map.size} email keys, ${nameMap.size} name keys, ${unattributed.length} unattributed in ${Math.round(performance.now() - t0)}ms`);
     return { map, nameMap, unattributed };
   }, [filteredActivities]);
 
   // Calculate KPI metrics per staff using the lookup map
   const staffMetrics = useMemo(() => {
-    const computeStart = performance.now();
+    const t0 = performance.now();
     const metrics = new Map<string, any>();
     const dayCount = Math.max(1, getDaysBetween(dateRange.start, dateRange.end));
     
@@ -197,10 +210,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       });
     });
     
-    const computeMs = Math.round(performance.now() - computeStart);
-    console.log(`[StaffPerformance] Computed metrics for ${metrics.size} staff in ${computeMs}ms`);
-    // Update load time (use setTimeout to avoid setState during render)
-    setTimeout(() => setLoadTime(prev => ({ fetch: prev?.fetch || 0, compute: computeMs })), 0);
+    console.log(`[StaffPerformance] Metrics: ${metrics.size} staff computed in ${Math.round(performance.now() - t0)}ms`);
     return metrics;
   }, [staffMembers, filteredActivities, activityByStaff, dateRange, selectedStaff]);
 
@@ -425,10 +435,8 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
             {isLoadingActivities && (
               <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Loading activities...</span>
             )}
-            {!isLoadingActivities && loadTime && (
-              <span className="text-xs text-gray-400 dark:text-gray-500" title="Performance metrics">
-                Fetch: {loadTime.fetch}ms | Compute: {loadTime.compute}ms
-              </span>
+            {!isLoadingActivities && loadTimeMs !== null && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">Loaded in {loadTimeMs}ms &middot; {filteredActivities.length} activities</span>
             )}
           </div>
         </div>
