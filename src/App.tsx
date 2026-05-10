@@ -35,7 +35,11 @@ const App: React.FC = () => {
   const [patientData, setPatientData] = useState<Record<string, PatientData>>({});
   
   const [session, setSession] = useState<{ role: 'staff' | 'patient', user?: Client, userRole?: 'admin' | 'coordinator' | 'navigator', userEmail?: string } | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return savedTheme === 'dark' || (!savedTheme && prefersDark);
+  });
   const [activeView, setActiveView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSubmissionsModalOpen, setIsSubmissionsModalOpen] = useState(false);
