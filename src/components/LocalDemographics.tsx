@@ -4,28 +4,40 @@ import { ExternalLink, Map, Globe, BarChart3, Users } from 'lucide-react';
 
 const demographicResources = [
     {
-        title: 'WA Population Lab – Social Atlas',
-        description: 'Interactive demographic maps for the Western Australian Population Lab region, including population, ethnicity, language, and housing data.',
-        url: 'https://atlas.id.com.au/wapl',
-        icon: Map,
-    },
-    {
         title: 'ABS Census Data – Greater Perth',
         description: 'Access the latest Australian Bureau of Statistics census data for Greater Perth including demographics, income, and employment.',
         url: 'https://www.abs.gov.au/census/find-census-data/quickstats/2021/5GPER',
         icon: BarChart3,
     },
     {
-        title: 'WA Health – Population Health Data',
-        description: 'Population health statistics and epidemiology data for Western Australia from the Department of Health.',
-        url: 'https://www.health.wa.gov.au/Reports-and-publications/Population-health',
+        title: 'ABS TableBuilder – Custom Data',
+        description: 'Build custom tables and maps from ABS Census data. Create demographic breakdowns by language, country of birth, and more.',
+        url: 'https://www.abs.gov.au/statistics/microdata-tablebuilder/tablebuilder',
+        icon: Map,
+    },
+    {
+        title: 'WA Health – Epidemiology Reports',
+        description: 'Population health statistics and epidemiology reports for Western Australia from the WA Department of Health.',
+        url: 'https://ww2.health.wa.gov.au/Reports-and-publications/Population-health',
         icon: Users,
     },
     {
-        title: '.id Community Profiles',
-        description: 'Detailed community demographic profiles powered by .id, including population forecasts, economic profiles, and social atlases.',
-        url: 'https://home.id.com.au/demographic-resources/',
+        title: 'Profile .id – City of Perth',
+        description: 'Community profile for City of Perth including population, cultural diversity, housing, and economic data.',
+        url: 'https://profile.id.com.au/perth',
         icon: Globe,
+    },
+    {
+        title: 'ABS – Cultural Diversity in Australia',
+        description: 'Census data on country of birth, language spoken at home, ancestry, and cultural diversity across Australia.',
+        url: 'https://www.abs.gov.au/statistics/people/people-and-communities/cultural-diversity-census/latest-release',
+        icon: Users,
+    },
+    {
+        title: 'ABS Data Explorer – Interactive Maps',
+        description: 'Explore ABS data visually with interactive maps and charts. View demographics by region, suburb, and statistical area.',
+        url: 'https://explore.data.abs.gov.au/',
+        icon: Map,
     },
 ];
 
@@ -75,7 +87,7 @@ const LocalDemographics: React.FC = () => {
             <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                     <strong>Note:</strong> These external resources open in a new browser tab. Data is sourced from the Australian Bureau of Statistics (ABS), 
-                    .id community demographic tools, and the WA Department of Health.
+                    .id community profiles, and the WA Department of Health. Use these tools to understand local demographics relevant to health navigation services.
                 </p>
             </div>
         </Card>
