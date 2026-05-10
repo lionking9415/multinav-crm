@@ -13,7 +13,10 @@ interface DashboardProps {
   isDarkMode: boolean;
 }
 
-const COLORS = ['#84cc16', '#a3e635', '#bef264', '#d9f99d', '#ecfccb', '#d1fae5', '#a7f3d0' ];
+const COLORS = [
+    '#84cc16', '#38bdf8', '#f97316', '#a855f7', '#ef4444', '#14b8a6', '#eab308',
+    '#ec4899', '#6366f1', '#22c55e', '#f43f5e', '#0ea5e9', '#8b5cf6', '#10b981'
+];
 
 const Dashboard: React.FC<DashboardProps> = ({ clients, activities, workforce, resources, setActiveView, isDarkMode }) => {
     
@@ -33,7 +36,18 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, activities, workforce, r
             return acc;
         }, {});
 
-        return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+        const sorted = Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+        
+        // Show top 8 ethnicities, group the rest into "Other"
+        const TOP_N = 8;
+        if (sorted.length <= TOP_N) return sorted;
+        
+        const top = sorted.slice(0, TOP_N);
+        const otherTotal = sorted.slice(TOP_N).reduce((sum, item) => sum + item.value, 0);
+        if (otherTotal > 0) {
+            top.push({ name: `Other (${sorted.length - TOP_N} groups)`, value: otherTotal });
+        }
+        return top;
     }, [clients]);
 
     const navigationSupportData = useMemo(() => {
@@ -143,11 +157,11 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, activities, workforce, r
                      {ethnicityData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>
                             <PieChart>
-                                <Pie data={ethnicityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} labelLine={false} label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}>
-                                    {ethnicityData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                <Pie data={ethnicityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} innerRadius={40} labelLine={true} label={(props: any) => props.percent >= 0.05 ? `${(props.percent * 100).toFixed(0)}%` : ''}>
+                                    {ethnicityData.map((_entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
-                                <Tooltip formatter={(value, name) => [`${value} (${totalClients > 0 ? (Number(value) / totalClients * 100).toFixed(1) : 0}%)`, name]} contentStyle={tooltipStyle} />
-                                <Legend />
+                                <Tooltip formatter={(value, name) => [`${value} client${Number(value) !== 1 ? 's' : ''} (${totalClients > 0 ? (Number(value) / totalClients * 100).toFixed(1) : 0}%)`, name]} contentStyle={tooltipStyle} />
+                                <Legend wrapperStyle={{ fontSize: '12px' }} />
                             </PieChart>
                         </ResponsiveContainer>
                     ) : (
