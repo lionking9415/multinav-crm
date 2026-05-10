@@ -19,6 +19,8 @@ export interface Client {
   emergencyContactPhone?: string;
   /** User ID of the staff member assigned to this client (from users table). */
   assignedStaffId?: string;
+  /** Additional staff input or student involvement */
+  additionalInput?: string;
 }
 
 export interface HealthActivity {

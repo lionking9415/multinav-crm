@@ -33,7 +33,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, o
     phoneNumber: initialClient?.phoneNumber || '',
     emergencyContactName: initialClient?.emergencyContactName || '',
     emergencyContactPhone: initialClient?.emergencyContactPhone || '',
-    assignedStaffId: initialClient?.assignedStaffId || ''
+    assignedStaffId: initialClient?.assignedStaffId || '',
+    additionalInput: initialClient?.additionalInput || ''
   });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -320,6 +321,28 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, o
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Staff assignment is managed by coordinators and admins</p>
             </div>
           )}
+
+          {/* Additional Input */}
+          <div>
+            <label htmlFor="additionalInput" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Input (Optional)</label>
+            <select
+              id="additionalInput"
+              name="additionalInput"
+              value={client.additionalInput || ''}
+              onChange={handleInputChange}
+              disabled={readOnly}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-lime-green-500 focus:ring-lime-green-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+            >
+              <option value="">None</option>
+              <option value="Student">Student</option>
+              {users.filter(u => u.isActive).map(user => (
+                <option key={user.id} value={user.fullName || user.email}>
+                  {user.fullName || user.email} {user.role ? `(${user.role})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Select additional staff or student involvement</p>
+          </div>
 
            {/* Password */}
           <div className="md:col-span-2">

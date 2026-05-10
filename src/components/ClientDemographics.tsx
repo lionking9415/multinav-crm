@@ -248,9 +248,14 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
                     <td className="px-6 py-4">{getAssignedStaffName(client.assignedStaffId)}</td>
                     <td className="px-6 py-4 text-right space-x-1">
                     {isNavigator ? (
-                      <button onClick={() => handleView(client)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
-                          <Eye className="h-5 w-5" />
-                      </button>
+                      <>
+                        <button onClick={() => handleView(client)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
+                            <Eye className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => handleEdit(client)} className="p-2 text-gray-500 hover:text-lime-green-600 dark:hover:text-lime-green-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Edit">
+                            <Pencil className="h-5 w-5" />
+                        </button>
+                      </>
                     ) : (
                       <>
                         <button onClick={() => handleView(client)} className="p-2 text-gray-500 hover:text-baby-blue-600 dark:hover:text-baby-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="View">
