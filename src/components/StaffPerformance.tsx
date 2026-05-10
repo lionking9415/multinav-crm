@@ -245,7 +245,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
             <select
               value={selectedStaff}
               onChange={(e) => setSelectedStaff(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             >
               <option value="all">All Staff</option>
               {staffMembers.map(staff => (
@@ -264,7 +264,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
             <select
               value={selectedLocation}
               onChange={(e) => setSelectedLocation(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             >
               <option value="all">All Locations</option>
               <option value="Canning">Canning</option>
@@ -285,7 +285,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
               type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
           
@@ -297,7 +297,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
               type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-green-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
         </div>
@@ -392,12 +392,12 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
                         {metrics.role.toUpperCase()}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center font-semibold">{metrics.totalActivities}</td>
-                    <td className="py-3 px-4 text-center">{metrics.navigationAssistance}</td>
-                    <td className="py-3 px-4 text-center">{metrics.servicesAccessed}</td>
-                    <td className="py-3 px-4 text-center">{metrics.discharges}</td>
-                    <td className="py-3 px-4 text-center">{metrics.clientsServed}</td>
-                    <td className="py-3 px-4 text-center">{metrics.averagePerDay.toFixed(1)}</td>
+                    <td className="py-3 px-4 text-center font-semibold dark:text-gray-100">{metrics.totalActivities}</td>
+                    <td className="py-3 px-4 text-center dark:text-gray-200">{metrics.navigationAssistance}</td>
+                    <td className="py-3 px-4 text-center dark:text-gray-200">{metrics.servicesAccessed}</td>
+                    <td className="py-3 px-4 text-center dark:text-gray-200">{metrics.discharges}</td>
+                    <td className="py-3 px-4 text-center dark:text-gray-200">{metrics.clientsServed}</td>
+                    <td className="py-3 px-4 text-center dark:text-gray-200">{metrics.averagePerDay.toFixed(1)}</td>
                   </tr>
               ))}
             </tbody>
@@ -429,9 +429,9 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
                 <h4 className="font-semibold text-gray-800 dark:text-gray-100">{metrics.name}</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">{metrics.role}</p>
                 <div className="mt-2 space-y-1">
-                  <p className="text-sm"><span className="font-medium">Activities:</span> {metrics.totalActivities}</p>
-                  <p className="text-sm"><span className="font-medium">Clients:</span> {metrics.clientsServed}</p>
-                  <p className="text-sm"><span className="font-medium">Avg/Day:</span> {metrics.averagePerDay.toFixed(1)}</p>
+                  <p className="text-sm dark:text-gray-200"><span className="font-medium">Activities:</span> {metrics.totalActivities}</p>
+                  <p className="text-sm dark:text-gray-200"><span className="font-medium">Clients:</span> {metrics.clientsServed}</p>
+                  <p className="text-sm dark:text-gray-200"><span className="font-medium">Avg/Day:</span> {metrics.averagePerDay.toFixed(1)}</p>
                 </div>
               </div>
             ))}
