@@ -53,7 +53,8 @@ export const clientService = {
       emergencyContactName: client.emergency_contact_name || undefined,
       emergencyContactPhone: client.emergency_contact_phone || undefined,
       assignedStaffId: client.assigned_staff_id || undefined,
-      additionalInput: client.additional_input || undefined
+      additionalInput: client.additional_input || undefined,
+      documents: client.documents || undefined
     }));
   },
 
@@ -80,7 +81,8 @@ export const clientService = {
         emergency_contact_name: client.emergencyContactName || null,
         emergency_contact_phone: client.emergencyContactPhone || null,
         assigned_staff_id: client.assignedStaffId || null,
-        additional_input: client.additionalInput || null
+        additional_input: client.additionalInput || null,
+        documents: client.documents || null
       })
       .select()
       .single();
@@ -114,6 +116,7 @@ export const clientService = {
     if (client.emergencyContactName !== undefined) updateData.emergency_contact_name = client.emergencyContactName || null;
     if (client.emergencyContactPhone !== undefined) updateData.emergency_contact_phone = client.emergencyContactPhone || null;
     if (client.additionalInput !== undefined) updateData.additional_input = client.additionalInput || null;
+    if (client.documents !== undefined) updateData.documents = client.documents || null;
     // Update password if provided (non-empty string)
     if (client.password && client.password.trim() !== '') {
       updateData.password_hash = client.password;
@@ -148,7 +151,8 @@ export const clientService = {
       emergencyContactName: data.emergency_contact_name || undefined,
       emergencyContactPhone: data.emergency_contact_phone || undefined,
       assignedStaffId: data.assigned_staff_id || undefined,
-      additionalInput: data.additional_input || undefined
+      additionalInput: data.additional_input || undefined,
+      documents: data.documents || undefined
     };
   },
 
@@ -232,7 +236,8 @@ export const clientService = {
       emergencyContactName: data.emergency_contact_name || undefined,
       emergencyContactPhone: data.emergency_contact_phone || undefined,
       assignedStaffId: data.assigned_staff_id || undefined,
-      additionalInput: data.additional_input || undefined
+      additionalInput: data.additional_input || undefined,
+      documents: data.documents || undefined
     };
   }
 };
@@ -268,7 +273,8 @@ export const activityService = {
       createdBy: activity.created_by,
       createdByName: activity.created_by_name,
       createdByRole: activity.created_by_role,
-      createdAt: activity.created_at
+      createdAt: activity.created_at,
+      documents: activity.documents || undefined
     }));
   },
 
@@ -296,7 +302,8 @@ export const activityService = {
         created_by: activity.createdBy || '',
         created_by_name: activity.createdByName || '',
         created_by_role: activity.createdByRole || 'navigator',
-        created_at: activity.createdAt || new Date().toISOString()
+        created_at: activity.createdAt || new Date().toISOString(),
+        documents: activity.documents || null
       })
       .select()
       .single();
@@ -327,6 +334,7 @@ export const activityService = {
     if (activity.isDischarge !== undefined) updateData.is_discharge = activity.isDischarge;
     if (activity.dischargeDate !== undefined) updateData.discharge_date = activity.dischargeDate && activity.dischargeDate !== '' ? activity.dischargeDate : null;
     if (activity.dischargeReason !== undefined) updateData.discharge_reason = activity.dischargeReason;
+    if (activity.documents !== undefined) updateData.documents = activity.documents || null;
     
     const { data, error } = await supabase
       .from('health_activities')

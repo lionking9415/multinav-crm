@@ -7,7 +7,7 @@ if (!API_KEY) {
     console.warn("VITE_GEMINI_API_KEY environment variable not set. AI features will be disabled.");
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY || "DISABLED" });
+const genAI = new GoogleGenAI({ apiKey: API_KEY || "DISABLED" });
 
 function buildPrompt(clients: Client[], activities: HealthActivity[], workforce: WorkforceData): string {
     
@@ -83,8 +83,8 @@ export async function generateInsights(clients: Client[], activities: HealthActi
     const prompt = buildPrompt(clients, activities, workforce);
 
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.0-flash-exp",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -153,8 +153,8 @@ export async function generateReportInsights(
     `;
     
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.0-flash-exp",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -230,8 +230,8 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
     console.groupEnd();
 
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.0-flash-exp",
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
@@ -305,8 +305,8 @@ Text to translate:
 "${text}"`;
 
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.0-flash-exp",
             contents: prompt,
             config: {
                 temperature: 0.1,

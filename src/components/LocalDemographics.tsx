@@ -28,6 +28,8 @@ const LocalDemographics: React.FC = () => {
                         title="Social Atlas Map for Greater Perth"
                         className="w-full h-[80vh] border-0"
                         loading="lazy"
+                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                        allow="geolocation"
                     />
                 </div>
             </div>

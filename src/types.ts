@@ -21,6 +21,8 @@ export interface Client {
   assignedStaffId?: string;
   /** Additional staff input or student involvement */
   additionalInput?: string;
+  /** Uploaded documents as JSON array of {name, url, uploadedAt} */
+  documents?: string;
 }
 
 export interface HealthActivity {
@@ -48,6 +50,8 @@ export interface HealthActivity {
     createdByRole?: 'admin' | 'coordinator' | 'navigator';
     createdAt?: string; // Timestamp when created
     location?: string; // Location where service was delivered
+    /** Uploaded documents as JSON array of {name, url, uploadedAt} */
+    documents?: string;
 }
 
 export interface Workforce {
