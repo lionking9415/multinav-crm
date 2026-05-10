@@ -508,7 +508,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-baby-blue-50'} font-sans`}>
+    <div className="flex h-screen bg-baby-blue-50 dark:bg-gray-900 font-sans">
         {/* Desktop Sidebar */}
         <aside className="w-64 flex-shrink-0 shadow-lg hidden md:block">
             <SidebarContent />
