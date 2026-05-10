@@ -157,7 +157,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, activities, workforce, r
                      {ethnicityData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={350}>
                             <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                                <Pie data={ethnicityData} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={80} innerRadius={35} labelLine={true} label={(props: any) => props.percent >= 0.05 ? `${(props.percent * 100).toFixed(0)}%` : ''}>
+                                <Pie data={ethnicityData} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={80} innerRadius={35} labelLine={true} label={(props: any) => props.percent >= 0.02 ? `${(props.percent * 100).toFixed(0)}%` : ''}>
                                     {ethnicityData.map((_entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip formatter={(value, name) => [`${value} client${Number(value) !== 1 ? 's' : ''} (${totalClients > 0 ? (Number(value) / totalClients * 100).toFixed(1) : 0}%)`, name]} contentStyle={tooltipStyle} />
