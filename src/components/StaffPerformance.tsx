@@ -20,9 +20,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [dateFilteredActivities, setDateFilteredActivities] = useState<HealthActivity[]>([]);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
-  const [loadTimeMs, setLoadTimeMs] = useState<number | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fetchStartTime = useRef<number>(0);
   
   // Helper function to calculate days between dates
   const getDaysBetween = (start: string, end: string) => {
@@ -35,31 +33,25 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
   // Server-side date filtering with debounce
   const fetchActivitiesByDate = useCallback(async (start: string, end: string) => {
     setIsLoadingActivities(true);
-    fetchStartTime.current = performance.now();
-    console.time('[StaffPerformance] Fetch activities');
+    const t0 = performance.now();
     try {
       const data = await activityService.getByDateRange(start, end);
-      console.timeEnd('[StaffPerformance] Fetch activities');
-      console.log(`[StaffPerformance] Fetched ${data.length} activities for ${start} to ${end}`);
+      console.log(`[StaffPerformance] Fetch ${data.length} activities from server: ${(performance.now() - t0).toFixed(1)}ms`);
       setDateFilteredActivities(data);
     } catch (err) {
-      console.timeEnd('[StaffPerformance] Fetch activities');
       console.error('[StaffPerformance] Failed to fetch activities by date range:', err);
-      console.time('[StaffPerformance] Client-side fallback filter');
+      const t1 = performance.now();
       const startDate = new Date(start);
       const endDate = new Date(end);
       const fallback = activities.filter(a => {
         const d = new Date(a.date);
         return d >= startDate && d <= endDate;
       });
-      console.timeEnd('[StaffPerformance] Client-side fallback filter');
-      console.log(`[StaffPerformance] Fallback: ${fallback.length} activities`);
+      console.log(`[StaffPerformance] Fallback client-side filter ${fallback.length} activities: ${(performance.now() - t1).toFixed(1)}ms`);
       setDateFilteredActivities(fallback);
     } finally {
-      const elapsed = Math.round(performance.now() - fetchStartTime.current);
-      setLoadTimeMs(elapsed);
-      console.log(`[StaffPerformance] Total fetch time: ${elapsed}ms`);
       setIsLoadingActivities(false);
+      console.log(`[StaffPerformance] Total fetch cycle: ${(performance.now() - t0).toFixed(1)}ms`);
     }
   }, [activities]);
 
@@ -96,7 +88,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       
       return staffMatch && locationMatch;
     });
-    console.log(`[StaffPerformance] Filter: ${result.length}/${dateFilteredActivities.length} activities in ${Math.round(performance.now() - t0)}ms`);
+    console.log(`[StaffPerformance] Client-side filter: ${dateFilteredActivities.length} → ${result.length} activities in ${(performance.now() - t0).toFixed(1)}ms`);
     return result;
   }, [dateFilteredActivities, selectedStaff, selectedLocation, staffMembers]);
 
@@ -131,7 +123,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       }
     });
 
-    console.log(`[StaffPerformance] Lookup map: ${map.size} email keys, ${nameMap.size} name keys, ${unattributed.length} unattributed in ${Math.round(performance.now() - t0)}ms`);
+    console.log(`[StaffPerformance] Lookup map built: ${map.size} email keys, ${nameMap.size} name keys, ${unattributed.length} unattributed in ${(performance.now() - t0).toFixed(1)}ms`);
     return { map, nameMap, unattributed };
   }, [filteredActivities]);
 
@@ -210,7 +202,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       });
     });
     
-    console.log(`[StaffPerformance] Metrics: ${metrics.size} staff computed in ${Math.round(performance.now() - t0)}ms`);
+    console.log(`[StaffPerformance] Metrics computed for ${metrics.size} staff in ${(performance.now() - t0).toFixed(1)}ms`);
     return metrics;
   }, [staffMembers, filteredActivities, activityByStaff, dateRange, selectedStaff]);
 
@@ -431,14 +423,9 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Staff Performance Metrics</h3>
-          <div className="flex items-center space-x-3">
-            {isLoadingActivities && (
-              <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Loading activities...</span>
-            )}
-            {!isLoadingActivities && loadTimeMs !== null && (
-              <span className="text-xs text-gray-400 dark:text-gray-500">Loaded in {loadTimeMs}ms &middot; {filteredActivities.length} activities</span>
-            )}
-          </div>
+          {isLoadingActivities && (
+            <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Loading activities...</span>
+          )}
         </div>
         
         {/* Admin Activities Note */}
