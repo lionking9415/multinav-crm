@@ -114,12 +114,15 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, activities, workforce, r
         </Card>
     );
     
+    const tickColor = isDarkMode ? '#e5e7eb' : '#374151';
     const tooltipStyle = {
-        backgroundColor: isDarkMode ? 'rgba(31,41,55,0.8)' : 'rgba(255,255,255,0.8)',
+        backgroundColor: isDarkMode ? 'rgba(31,41,55,0.9)' : 'rgba(255,255,255,0.9)',
         backdropFilter: 'blur(2px)',
-        border: '1px solid #e2e8f0',
-        borderRadius: '0.5rem'
+        border: isDarkMode ? '1px solid #4b5563' : '1px solid #e2e8f0',
+        borderRadius: '0.5rem',
+        color: isDarkMode ? '#f3f4f6' : '#1f2937'
     };
+    const legendStyle = { fontSize: '12px', color: tickColor };
 
     return (
         <div className="space-y-8">
@@ -161,7 +164,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, activities, workforce, r
                                     {ethnicityData.map((_entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip formatter={(value, name) => [`${value} client${Number(value) !== 1 ? 's' : ''} (${totalClients > 0 ? (Number(value) / totalClients * 100).toFixed(1) : 0}%)`, name]} contentStyle={tooltipStyle} />
-                                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                                <Legend wrapperStyle={legendStyle} />
                             </PieChart>
                         </ResponsiveContainer>
                     ) : (
@@ -174,8 +177,8 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, activities, workforce, r
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={navigationSupportData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.2}/>
-                                <XAxis type="number" allowDecimals={false} />
-                                <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 12, fill: 'currentColor' }} />
+                                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor }} />
+                                <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 12, fill: tickColor }} />
                                 <Tooltip cursor={{ fill: 'rgba(236, 252, 203, 0.3)' }} contentStyle={tooltipStyle} />
                                 <Bar dataKey="value" name="Times Accessed" fill="#84cc16" />
                             </BarChart>
@@ -201,19 +204,20 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, activities, workforce, r
                                     domain={[-maxPopulation, maxPopulation]}
                                     tickFormatter={(value) => `${Math.abs(value)}`}
                                     allowDataOverflow={true}
+                                    tick={{ fill: tickColor }}
                                 />
                                 <YAxis 
                                     type="category" 
                                     dataKey="ageGroup" 
                                     width={40}
-                                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                                    tick={{ fontSize: 12, fill: tickColor }}
                                 />
                                 <Tooltip 
                                     contentStyle={tooltipStyle}
                                     formatter={(value: number, name: string) => [Math.abs(value), name.charAt(0).toUpperCase() + name.slice(1)]}
                                     cursor={{fill: isDarkMode ? 'rgba(132, 204, 22, 0.1)' : 'rgba(236, 252, 203, 0.3)'}}
                                 />
-                                <Legend />
+                                <Legend wrapperStyle={legendStyle} />
                                 <Bar dataKey="male" fill="#38bdf8" name="Male" />
                                 <Bar dataKey="female" fill="#f87171" name="Female" />
                             </BarChart>
