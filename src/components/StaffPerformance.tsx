@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { HealthActivity, Client, User } from '../types';
+import { activityService } from '../services/supabaseService';
 import Card from './Card';
 import { Download, Filter, Calendar, MapPin, User as UserIcon, Activity, TrendingUp, Users, Target, Award } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -17,8 +18,11 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
     end: new Date().toISOString().split('T')[0]
   });
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [dateFilteredActivities, setDateFilteredActivities] = useState<HealthActivity[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  // Helper function to calculate days between dates - moved outside of useMemo
+  // Helper function to calculate days between dates
   const getDaysBetween = (start: string, end: string) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
@@ -26,9 +30,37 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
   };
 
-  // Use users from User Management system, filter to only show navigators and coordinators
+  // Server-side date filtering with debounce
+  const fetchActivitiesByDate = useCallback(async (start: string, end: string) => {
+    setIsLoadingActivities(true);
+    try {
+      const data = await activityService.getByDateRange(start, end);
+      setDateFilteredActivities(data);
+    } catch (err) {
+      console.error('[StaffPerformance] Failed to fetch activities by date range:', err);
+      // Fallback to client-side filtering from props
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      setDateFilteredActivities(activities.filter(a => {
+        const d = new Date(a.date);
+        return d >= startDate && d <= endDate;
+      }));
+    } finally {
+      setIsLoadingActivities(false);
+    }
+  }, [activities]);
+
+  // Debounced date range fetch
+  useEffect(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      fetchActivitiesByDate(dateRange.start, dateRange.end);
+    }, 300);
+    return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
+  }, [dateRange.start, dateRange.end, fetchActivitiesByDate]);
+
+  // Use users from User Management system
   const staffMembers = useMemo(() => {
-    // Include ALL users for tracking purposes
     return users.map(user => ({
       email: user.email,
       name: user.fullName,
@@ -37,76 +69,111 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
     }));
   }, [users]);
 
-  // Filter activities based on selection
+  // Apply staff and location filters on server-fetched data
   const filteredActivities = useMemo(() => {
-    return activities.filter(activity => {
-      const activityDate = new Date(activity.date);
-      const startDate = new Date(dateRange.start);
-      const endDate = new Date(dateRange.end);
-      
-      const dateMatch = activityDate >= startDate && activityDate <= endDate;
-      
-      // Better staff matching - check multiple fields
+    return dateFilteredActivities.filter(activity => {
       const staffMatch = selectedStaff === 'all' || 
         activity.createdBy === selectedStaff ||
         activity.createdBy === selectedStaff.toLowerCase() ||
         (staffMembers.find(s => s.email === selectedStaff)?.name === activity.createdByName);
       
       const locationMatch = selectedLocation === 'all' || 
-        activity.location === selectedLocation ||
-        (!activity.location && selectedLocation === 'all'); // Handle activities without location
+        activity.location === selectedLocation;
       
-      return dateMatch && staffMatch && locationMatch;
+      return staffMatch && locationMatch;
     });
-  }, [activities, selectedStaff, dateRange, selectedLocation, staffMembers]);
+  }, [dateFilteredActivities, selectedStaff, selectedLocation, staffMembers]);
 
-  // Calculate KPI metrics per staff
+  // Build activity lookup map by staff email — O(N) instead of O(N×M)
+  const activityByStaff = useMemo(() => {
+    const map = new Map<string, HealthActivity[]>();
+    const unattributed: HealthActivity[] = [];
+
+    filteredActivities.forEach(a => {
+      const email = a.createdBy || '';
+      if (!email || email === 'unknown@multinav.com' || !a.createdByName) {
+        unattributed.push(a);
+      } else {
+        if (!map.has(email)) map.set(email, []);
+        map.get(email)!.push(a);
+        // Also index by lowercase for case-insensitive matching
+        const lc = email.toLowerCase();
+        if (lc !== email) {
+          if (!map.has(lc)) map.set(lc, []);
+          map.get(lc)!.push(a);
+        }
+      }
+    });
+
+    // Also build a name-based index for fallback matching
+    const nameMap = new Map<string, HealthActivity[]>();
+    filteredActivities.forEach(a => {
+      if (a.createdByName) {
+        if (!nameMap.has(a.createdByName)) nameMap.set(a.createdByName, []);
+        nameMap.get(a.createdByName)!.push(a);
+      }
+    });
+
+    return { map, nameMap, unattributed };
+  }, [filteredActivities]);
+
+  // Calculate KPI metrics per staff using the lookup map
   const staffMetrics = useMemo(() => {
     const metrics = new Map<string, any>();
+    const dayCount = Math.max(1, getDaysBetween(dateRange.start, dateRange.end));
     
-    // If a specific staff is selected, only show that staff member
     const staffToShow = selectedStaff === 'all' 
       ? staffMembers 
       : staffMembers.filter(s => s.email === selectedStaff);
     
     staffToShow.forEach(staff => {
-      // For the selected staff member, use the already filtered activities
-      // For "all staff", we need to filter by this specific staff member
-      const staffActivities = selectedStaff === 'all'
-        ? filteredActivities.filter(a => {
-            // Match by email (exact or lowercase)
-            if (a.createdBy === staff.email || a.createdBy === staff.email.toLowerCase()) {
-              return true;
-            }
-            // Match by name
-            if (a.createdByName === staff.name) {
-              return true;
-            }
-            // Assign unattributed activities (old/existing ones) to System Administrator
-            if (staff.email === 'admin@multinav.com' && 
-                (!a.createdBy || a.createdBy === 'unknown@multinav.com' || a.createdBy === '' || !a.createdByName)) {
-              return true;
-            }
-            return false;
-          })
-        : filteredActivities; // Already filtered by selectedStaff
+      let staffActivities: HealthActivity[];
+
+      if (selectedStaff !== 'all') {
+        staffActivities = filteredActivities;
+      } else {
+        // O(1) lookup instead of O(N) filter
+        const byEmail = activityByStaff.map.get(staff.email) || [];
+        const byName = activityByStaff.nameMap.get(staff.name) || [];
+        // Merge, deduplicate by activity id
+        const seen = new Set<string>();
+        staffActivities = [];
+        for (const a of byEmail) {
+          if (!seen.has(a.id)) { seen.add(a.id); staffActivities.push(a); }
+        }
+        for (const a of byName) {
+          if (!seen.has(a.id)) { seen.add(a.id); staffActivities.push(a); }
+        }
+        // Assign unattributed activities to admin
+        if (staff.email === 'admin@multinav.com') {
+          for (const a of activityByStaff.unattributed) {
+            if (!seen.has(a.id)) { seen.add(a.id); staffActivities.push(a); }
+          }
+        }
+      }
         
       const clientsServed = new Set(staffActivities.map(a => a.clientId));
       
-      // Count different types of activities
-      const navigationCount = staffActivities.reduce((sum, a) => {
-        let count = a.navigationAssistance?.length || 0;
-        if (a.otherAssistance) count++;
-        return sum + count;
-      }, 0);
-      
-      const servicesCount = staffActivities.reduce((sum, a) => {
-        let count = a.servicesAccessed?.length || 0;
-        if (a.otherEducation) count++;
-        return sum + count;
-      }, 0);
-      
-      const dischargeCount = staffActivities.filter(a => a.isDischarge).length;
+      let navigationCount = 0;
+      let servicesCount = 0;
+      let dischargeCount = 0;
+      let appointmentScheduling = 0;
+      let medicareEnrollment = 0;
+      let careCoordination = 0;
+      let mentalHealthServices = 0;
+      let gpServices = 0;
+
+      // Single pass over staffActivities for all counts
+      for (const a of staffActivities) {
+        navigationCount += (a.navigationAssistance?.length || 0) + (a.otherAssistance ? 1 : 0);
+        servicesCount += (a.servicesAccessed?.length || 0) + (a.otherEducation ? 1 : 0);
+        if (a.isDischarge) dischargeCount++;
+        if (a.navigationAssistance?.includes('Appointment Scheduling')) appointmentScheduling++;
+        if (a.navigationAssistance?.includes('Medicare Enrollment')) medicareEnrollment++;
+        if (a.navigationAssistance?.includes('Care Coordination')) careCoordination++;
+        if (a.servicesAccessed?.includes('Mental Health')) mentalHealthServices++;
+        if (a.servicesAccessed?.includes('GP / Primary Care')) gpServices++;
+      }
       
       metrics.set(staff.email, {
         ...staff,
@@ -115,23 +182,17 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
         servicesAccessed: servicesCount,
         discharges: dischargeCount,
         clientsServed: clientsServed.size,
-        averagePerDay: staffActivities.length / Math.max(1, getDaysBetween(dateRange.start, dateRange.end)),
-        // Breakdown by type
-        appointmentScheduling: staffActivities.filter(a => 
-          a.navigationAssistance?.includes('Appointment Scheduling')).length,
-        medicareEnrollment: staffActivities.filter(a => 
-          a.navigationAssistance?.includes('Medicare Enrollment')).length,
-        careCoordination: staffActivities.filter(a => 
-          a.navigationAssistance?.includes('Care Coordination')).length,
-        mentalHealthServices: staffActivities.filter(a => 
-          a.servicesAccessed?.includes('Mental Health')).length,
-        gpServices: staffActivities.filter(a => 
-          a.servicesAccessed?.includes('GP / Primary Care')).length
+        averagePerDay: staffActivities.length / dayCount,
+        appointmentScheduling,
+        medicareEnrollment,
+        careCoordination,
+        mentalHealthServices,
+        gpServices
       });
     });
     
     return metrics;
-  }, [staffMembers, filteredActivities, dateRange, selectedStaff]);
+  }, [staffMembers, filteredActivities, activityByStaff, dateRange, selectedStaff]);
 
   // Export to Excel
   const exportToExcel = () => {
@@ -348,7 +409,12 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
 
       {/* Staff Performance Table */}
       <Card>
-        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Staff Performance Metrics</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Staff Performance Metrics</h3>
+          {isLoadingActivities && (
+            <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Loading activities...</span>
+          )}
+        </div>
         
         {/* Admin Activities Note */}
         <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">

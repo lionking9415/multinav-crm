@@ -278,6 +278,42 @@ export const activityService = {
     }));
   },
 
+  async getByDateRange(start: string, end: string): Promise<HealthActivity[]> {
+    const { data, error } = await supabase
+      .from('health_activities')
+      .select('*')
+      .gte('activity_date', start)
+      .lte('activity_date', end)
+      .order('activity_date', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map(activity => ({
+      id: activity.activity_id,
+      clientId: activity.client_id,
+      date: activity.activity_date,
+      navigationAssistance: activity.navigation_assistance || [],
+      servicesAccessed: activity.services_accessed || [],
+      reasonForAssistance: activity.reason_for_assistance || '',
+      referralsMade: activity.referrals_made || '',
+      followUpActions: activity.follow_up_actions || '',
+      educationalResources: activity.educational_resources || [],
+      preventiveServices: activity.preventive_services || [],
+      maternalChildHealth: activity.maternal_child_health || [],
+      location: activity.location || '',
+      otherAssistance: activity.other_assistance || '',
+      otherEducation: activity.other_education || '',
+      isDischarge: activity.is_discharge || false,
+      dischargeDate: activity.discharge_date || '',
+      dischargeReason: activity.discharge_reason || '',
+      createdBy: activity.created_by,
+      createdByName: activity.created_by_name,
+      createdByRole: activity.created_by_role,
+      createdAt: activity.created_at,
+      documents: activity.documents || undefined
+    }));
+  },
+
   async create(activity: HealthActivity): Promise<HealthActivity> {
     const { data, error } = await supabase
       .from('health_activities')
