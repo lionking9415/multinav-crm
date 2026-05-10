@@ -18,9 +18,21 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
     end: new Date().toISOString().split('T')[0]
   });
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
-  const [dateFilteredActivities, setDateFilteredActivities] = useState<HealthActivity[]>([]);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialRender = useRef(true);
+  // Use activities from props for instant initial display
+  const [dateFilteredActivities, setDateFilteredActivities] = useState<HealthActivity[]>(() => {
+    const t0 = performance.now();
+    const startDate = new Date(new Date().setMonth(new Date().getMonth() - 1));
+    const endDate = new Date();
+    const result = activities.filter(a => {
+      const d = new Date(a.date);
+      return d >= startDate && d <= endDate;
+    });
+    console.log(`[StaffPerformance] Initial client-side filter: ${activities.length} → ${result.length} in ${(performance.now() - t0).toFixed(1)}ms`);
+    return result;
+  });
   
   // Helper function to calculate days between dates
   const getDaysBetween = (start: string, end: string) => {
@@ -30,7 +42,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
   };
 
-  // Server-side date filtering with debounce
+  // Server-side date filtering with debounce — only on date change (not initial)
   const fetchActivitiesByDate = useCallback(async (start: string, end: string) => {
     setIsLoadingActivities(true);
     const t0 = performance.now();
@@ -39,24 +51,25 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       console.log(`[StaffPerformance] Fetch ${data.length} activities from server: ${(performance.now() - t0).toFixed(1)}ms`);
       setDateFilteredActivities(data);
     } catch (err) {
-      console.error('[StaffPerformance] Failed to fetch activities by date range:', err);
-      const t1 = performance.now();
+      console.error('[StaffPerformance] Server fetch failed, using client-side fallback:', err);
       const startDate = new Date(start);
       const endDate = new Date(end);
-      const fallback = activities.filter(a => {
+      setDateFilteredActivities(activities.filter(a => {
         const d = new Date(a.date);
         return d >= startDate && d <= endDate;
-      });
-      console.log(`[StaffPerformance] Fallback client-side filter ${fallback.length} activities: ${(performance.now() - t1).toFixed(1)}ms`);
-      setDateFilteredActivities(fallback);
+      }));
     } finally {
       setIsLoadingActivities(false);
       console.log(`[StaffPerformance] Total fetch cycle: ${(performance.now() - t0).toFixed(1)}ms`);
     }
   }, [activities]);
 
-  // Debounced date range fetch
+  // Debounced server fetch — skip initial render (already filtered from props)
   useEffect(() => {
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       fetchActivitiesByDate(dateRange.start, dateRange.end);
