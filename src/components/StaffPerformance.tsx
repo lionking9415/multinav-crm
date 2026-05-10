@@ -20,6 +20,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [dateFilteredActivities, setDateFilteredActivities] = useState<HealthActivity[]>([]);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  const [loadTime, setLoadTime] = useState<{ fetch: number; compute: number } | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Helper function to calculate days between dates
@@ -33,18 +34,22 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
   // Server-side date filtering with debounce
   const fetchActivitiesByDate = useCallback(async (start: string, end: string) => {
     setIsLoadingActivities(true);
+    const fetchStart = performance.now();
     try {
       const data = await activityService.getByDateRange(start, end);
+      const fetchMs = Math.round(performance.now() - fetchStart);
+      console.log(`[StaffPerformance] Fetched ${data.length} activities in ${fetchMs}ms`);
       setDateFilteredActivities(data);
+      setLoadTime(prev => ({ fetch: fetchMs, compute: prev?.compute || 0 }));
     } catch (err) {
       console.error('[StaffPerformance] Failed to fetch activities by date range:', err);
-      // Fallback to client-side filtering from props
       const startDate = new Date(start);
       const endDate = new Date(end);
       setDateFilteredActivities(activities.filter(a => {
         const d = new Date(a.date);
         return d >= startDate && d <= endDate;
       }));
+      setLoadTime(prev => ({ fetch: Math.round(performance.now() - fetchStart), compute: prev?.compute || 0 }));
     } finally {
       setIsLoadingActivities(false);
     }
@@ -119,6 +124,7 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
 
   // Calculate KPI metrics per staff using the lookup map
   const staffMetrics = useMemo(() => {
+    const computeStart = performance.now();
     const metrics = new Map<string, any>();
     const dayCount = Math.max(1, getDaysBetween(dateRange.start, dateRange.end));
     
@@ -191,6 +197,10 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       });
     });
     
+    const computeMs = Math.round(performance.now() - computeStart);
+    console.log(`[StaffPerformance] Computed metrics for ${metrics.size} staff in ${computeMs}ms`);
+    // Update load time (use setTimeout to avoid setState during render)
+    setTimeout(() => setLoadTime(prev => ({ fetch: prev?.fetch || 0, compute: computeMs })), 0);
     return metrics;
   }, [staffMembers, filteredActivities, activityByStaff, dateRange, selectedStaff]);
 
@@ -411,9 +421,16 @@ const StaffPerformance: React.FC<StaffPerformanceProps> = ({ activities, clients
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Staff Performance Metrics</h3>
-          {isLoadingActivities && (
-            <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Loading activities...</span>
-          )}
+          <div className="flex items-center space-x-3">
+            {isLoadingActivities && (
+              <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Loading activities...</span>
+            )}
+            {!isLoadingActivities && loadTime && (
+              <span className="text-xs text-gray-400 dark:text-gray-500" title="Performance metrics">
+                Fetch: {loadTime.fetch}ms | Compute: {loadTime.compute}ms
+              </span>
+            )}
+          </div>
         </div>
         
         {/* Admin Activities Note */}
