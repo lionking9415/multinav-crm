@@ -1,6 +1,6 @@
 import React from 'react';
 import Card from './Card';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Map } from 'lucide-react';
 
 const PERTH_ATLAS_URL = 'https://atlas.id.com.au/wapl';
 
@@ -22,15 +22,27 @@ const LocalDemographics: React.FC = () => {
             </div>
 
             <div className="mt-4">
-                <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-800 rounded-md shadow-inner overflow-hidden">
-                     <iframe
-                        src={PERTH_ATLAS_URL}
-                        title="Social Atlas Map for Greater Perth"
-                        className="w-full h-[80vh] border-0"
-                        loading="lazy"
-                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                        allow="geolocation"
-                    />
+                <div className="bg-gradient-to-br from-baby-blue-50 to-lime-green-50 dark:from-gray-800 dark:to-gray-700 rounded-lg p-12 text-center">
+                    <Map className="mx-auto h-24 w-24 text-baby-blue-400 dark:text-baby-blue-300 mb-6" />
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">
+                        Perth Social Atlas
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+                        Access detailed demographic data, interactive maps, and community profiles for Greater Perth. 
+                        View population statistics, cultural diversity, language data, and socioeconomic indicators by suburb and region.
+                    </p>
+                    <a
+                        href={PERTH_ATLAS_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-lime-green-500 hover:bg-lime-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-green-500 transition-colors"
+                    >
+                        Open Interactive Atlas
+                        <ExternalLink className="ml-3 h-6 w-6" />
+                    </a>
+                    <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                        Opens in a new tab
+                    </p>
                 </div>
             </div>
         </Card>
