@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import type { Client, User } from '../types';
+import type { Client, User, HealthActivity } from '../types';
 import { clientService } from '../services/supabaseService';
 import Card from './Card';
 import ClientForm from './ClientForm';
@@ -12,6 +12,7 @@ import 'jspdf-autotable';
 interface ClientDemographicsProps {
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
+  activities: HealthActivity[];
   users: User[];
   currentUser?: {
     email: string;
@@ -20,7 +21,7 @@ interface ClientDemographicsProps {
   };
 }
 
-const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setClients, users, currentUser }) => {
+const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setClients, activities, users, currentUser }) => {
   const [view, setView] = useState<'list' | 'form'>('list');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,6 +168,7 @@ const ClientDemographics: React.FC<ClientDemographicsProps> = ({ clients, setCli
       <ClientForm
         initialClient={selectedClient}
         users={users}
+        activities={activities}
         onSave={handleSave}
         onCancel={handleCancel}
         readOnly={isViewOnly}

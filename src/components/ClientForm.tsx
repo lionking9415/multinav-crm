@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import type { Client, User } from '../types';
+import React, { useEffect, useState, useMemo } from 'react';
+import type { Client, User, HealthActivity } from '../types';
 import Card from './Card';
 import { SEX_OPTIONS, COUNTRY_OPTIONS, ETHNICITY_OPTIONS, LANGUAGE_OPTIONS, REFERRAL_SOURCE_OPTIONS } from '../constants';
 import MultiSelect from './MultiSelect';
+import { Calendar, User as UserIcon } from 'lucide-react';
 
 interface ClientFormProps {
   initialClient: Client | null;
   users: User[];
+  activities: HealthActivity[];
   onSave: (client: Client) => void;
   onCancel: () => void;
   readOnly?: boolean;
   canAssignStaff?: boolean;
 }
 
-const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, onCancel, readOnly, canAssignStaff = true }) => {
+const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, activities, onSave, onCancel, readOnly, canAssignStaff = true }) => {
   const [client, setClient] = useState<Client>({
     id: initialClient?.id || '',
     fullName: initialClient?.fullName || '',
@@ -351,6 +353,76 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialClient, users, onSave, o
              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Clients use their Client ID and this password to log in to the My Navigation portal.</p>
           </div>
         </div>
+
+        {/* Health Navigation Activities Preview - Only in View Mode */}
+        {readOnly && initialClient && (
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+              <Calendar className="w-5 h-5 mr-2" />
+              Recent Health Navigation Activities
+            </h3>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              {(() => {
+                const clientActivities = activities
+                  .filter(a => a.clientId === initialClient.id)
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .slice(0, 10);
+                
+                if (clientActivities.length === 0) {
+                  return (
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                      No health navigation activities recorded for this client yet.
+                    </p>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-3">
+                    {clientActivities.map((activity) => (
+                      <div key={activity.id} className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {new Date(activity.date).toLocaleDateString('en-AU', { 
+                                  day: '2-digit', 
+                                  month: '2-digit', 
+                                  year: 'numeric' 
+                                })}
+                              </span>
+                              {activity.createdByName && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                  <UserIcon className="w-3 h-3 mr-1" />
+                                  {activity.createdByName}
+                                </span>
+                              )}
+                            </div>
+                            {activity.navigationAssistance && activity.navigationAssistance.length > 0 && (
+                              <div className="mb-1">
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Navigation: </span>
+                                <span className="text-xs text-gray-700 dark:text-gray-200">
+                                  {activity.navigationAssistance.join(', ')}
+                                </span>
+                              </div>
+                            )}
+                            {activity.servicesAccessed && activity.servicesAccessed.length > 0 && (
+                              <div>
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Services: </span>
+                                <span className="text-xs text-gray-700 dark:text-gray-200">
+                                  {activity.servicesAccessed.join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* Buttons */}
         <div className="mt-8 flex justify-end space-x-4">

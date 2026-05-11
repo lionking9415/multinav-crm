@@ -403,7 +403,7 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard clients={clients} activities={activities} workforce={workforce} resources={resources} setActiveView={setActiveView} isDarkMode={isDarkMode} />;
       case 'demographics':
-        return <ClientDemographics clients={clients} setClients={setClients} users={users} currentUser={{
+        return <ClientDemographics clients={clients} setClients={setClients} activities={activities} users={users} currentUser={{
                     email: session?.userEmail || '',
                     role: session?.userRole || 'navigator',
                     name: users.find(u => u.email === session?.userEmail)?.fullName || session?.userEmail?.split('@')[0] || 'Unknown'
