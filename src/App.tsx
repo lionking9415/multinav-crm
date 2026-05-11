@@ -9,7 +9,6 @@ import AiInsightsDashboard from './components/AiInsightsDashboard';
 import Dashboard from './components/Dashboard';
 import SimpleAuthPage from './components/SimpleAuthPage';
 import GpEngagement from './components/GpEngagement';
-import LocalDemographics from './components/LocalDemographics';
 import MyNavigation from './components/MyNavigation';
 import PatientSubmissionsViewer from './components/PatientSubmissionsViewer';
 import ProgramReporting from './components/ProgramReporting';
@@ -362,7 +361,6 @@ const App: React.FC = () => {
     { key: 'workforce', label: 'Workforce Tracking', icon: <Briefcase /> },
     { key: 'unifiedReporting', label: 'Unified Reporting', icon: <FileBarChart /> },
     { key: 'reporting', label: 'Program Reporting', icon: <FilePieChart /> },
-    { key: 'localDemographics', label: 'Local Demographic Insights', icon: <Map /> },
     { key: 'gpEngagement', label: 'Primary Care/GP Engagement', icon: <Stethoscope /> },
     { key: 'resources', label: 'Program Resources', icon: <FolderKanban /> },
     { key: 'insights', label: 'AI Insights', icon: <BotMessageSquare /> },
@@ -377,7 +375,7 @@ const App: React.FC = () => {
     const userRole = session.userRole || 'navigator';
     
     // Define which items each role can access
-    const navigatorItems = ['demographics', 'activities', 'communityEngagement', 'localDemographics', 'gpEngagement', 'resources'];
+    const navigatorItems = ['demographics', 'activities', 'communityEngagement', 'gpEngagement', 'resources'];
     const coordinatorItems = [...navigatorItems, 'dashboard', 'reporting', 'workforce', 'insights'];
     const adminItems = allNavItems.map(item => item.key); // Admin gets everything
     
@@ -438,8 +436,6 @@ const App: React.FC = () => {
         return <UnifiedReporting clients={clients} activities={activities} />;
       case 'reporting':
         return <ProgramReporting clients={clients} activities={activities} workforce={workforce} />;
-      case 'localDemographics':
-        return <LocalDemographics />;
       case 'gpEngagement':
         return <GpEngagement practices={gpPractices} setPractices={setGpPractices} />;
       case 'resources':
@@ -575,7 +571,7 @@ const App: React.FC = () => {
                 </div>
             </header>
             <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:p-8">
-                <div className={`mx-auto ${['workforce', 'gpEngagement', 'localDemographics', 'reporting'].includes(activeView) ? 'max-w-screen-2xl' : 'max-w-7xl'}`}>
+                <div className={`mx-auto ${['workforce', 'gpEngagement', 'reporting'].includes(activeView) ? 'max-w-screen-2xl' : 'max-w-7xl'}`}>
                     {renderStaffContent()}
                 </div>
             </main>

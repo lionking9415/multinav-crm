@@ -628,7 +628,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers }) => {
             <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
               <li>✓ Client Management</li>
               <li>✓ Health Navigation</li>
-              <li>✓ Local Demographics</li>
+              <li>✓ Community Engagement</li>
               <li>✓ GP Engagement</li>
               <li>✓ Program Resources</li>
               <li className="text-red-600 dark:text-red-400">✗ No Reporting Access</li>
