@@ -84,7 +84,7 @@ export async function generateInsights(clients: Client[], activities: HealthActi
 
     try {
         const response = await genAI.models.generateContent({
-            model: "gemini-2.0-flash-exp",
+            model: "gemini-2.5-flash",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -154,7 +154,7 @@ export async function generateReportInsights(
     
     try {
         const response = await genAI.models.generateContent({
-            model: "gemini-2.0-flash-exp",
+            model: "gemini-2.5-flash",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -231,7 +231,7 @@ export async function scanForGps(query: string): Promise<Omit<GpPractice, 'id' |
 
     try {
         const response = await genAI.models.generateContent({
-            model: "gemini-2.0-flash-exp",
+            model: "gemini-2.5-flash",
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
@@ -306,7 +306,7 @@ Text to translate:
 
     try {
         const response = await genAI.models.generateContent({
-            model: "gemini-2.0-flash-exp",
+            model: "gemini-2.5-flash",
             contents: prompt,
             config: {
                 temperature: 0.1,
